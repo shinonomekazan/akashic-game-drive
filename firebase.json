@@ -1,55 +1,55 @@
 {
-  "projects": {
-    "default": "akashic-game-drive"
-  },
-  "emulators": {
-    "auth": {
-      "port": 9099
-    },
-    "firestore": {
-      "port": 8080
-    },
-    "storage": {
-      "port": 9199
-    },
-    "hosting": {
-      "port": 5000
-    },
-    "ui": {
-      "enabled": true,
-      "port": 4000
-    }
-  },
-  "hosting": {
-    "public": "public",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [
-      {
-        "source": "/login",
-        "destination": "/index.html"
-      },
-      {
-        "source": "/my",
-        "destination": "/index.html"
-      }
-    ],
-    "headers": [
-      {
-        "source": "**",
-        "headers": [
-          {
-            "key": "Cross-Origin-Opener-Policy",
-            "value": "same-origin-allow-popups"
-          }
-        ]
-      }
-    ]
-  },
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
-  "storage": {
-    "rules": "storage.rules"
-  }
+	"projects": {
+		"default": "akashic-game-drive"
+	},
+	"emulators": {
+		"auth": {
+			"port": 9099
+		},
+		"firestore": {
+			"port": 8080
+		},
+		"storage": {
+			"port": 9199
+		},
+		"hosting": {
+			"port": 5000
+		},
+		"ui": {
+			"enabled": true,
+			"port": 4000
+		}
+	},
+	"hosting": {
+		"public": "public",
+		"ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+		"rewrites": [
+			{
+				"source": "/login",
+				"destination": "/index.html"
+			},
+			{
+				"source": "/my",
+				"destination": "/index.html"
+			}
+		],
+		"headers": [
+			{
+				"source": "**",
+				"headers": [
+					{
+						"key": "Cross-Origin-Opener-Policy",
+						"value": "same-origin-allow-popups"
+					}
+				]
+			}
+		]
+	},
+	"firestore": {
+		"rules": "firestore.rules",
+		"indexes": "firestore.indexes.json"
+	},
+	"storage": {
+		"rules": "storage.rules"
+	}
 }

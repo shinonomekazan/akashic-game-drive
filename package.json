@@ -1,36 +1,36 @@
 {
-  "name": "akashic-game-drive",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "format": "prettier --write .",
-    "build": "webpack",
-    "build:watch": "webpack --watch",
-    "start:emulator": "firebase emulators:start",
-    "deploy:firestore": "firebase deploy --only firestore",
-    "deploy:functions": "firebase deploy --only functions",
-    "deploy:storage": "firebase deploy --only storage"
-  },
-  "dependencies": {
-    "firebase": "^11.7.1"
-  },
-  "devDependencies": {
-    "firebase-tools": "^13.23.1",
-    "typescript": "^5.8.3",
-    "css-loader": "^7.1.2",
-    "style-loader": "^4.0.0",
-    "terser-webpack-plugin": "^5.3.14",
-    "ts-loader": "^9.5.2",
-    "webpack": "^5.99.1",
-    "webpack-cli": "^6.0.1",
-    "prettier": "^3.5.3",
-    "@types/bootstrap": "^5.2.10",
-    "bootstrap": "^5.3.6",
-    "dotenv-webpack": "^8.1.0"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "license": "MIT"
+	"name": "akashic-game-drive",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"format": "prettier --write .",
+		"build": "webpack",
+		"build:watch": "webpack --watch",
+		"start:emulator": "firebase emulators:start",
+		"deploy:firestore": "firebase deploy --only firestore",
+		"deploy:functions": "firebase deploy --only functions",
+		"deploy:storage": "firebase deploy --only storage"
+	},
+	"dependencies": {
+		"firebase": "^11.7.1"
+	},
+	"devDependencies": {
+		"firebase-tools": "^13.23.1",
+		"typescript": "^5.8.3",
+		"css-loader": "^7.1.2",
+		"style-loader": "^4.0.0",
+		"terser-webpack-plugin": "^5.3.14",
+		"ts-loader": "^9.5.2",
+		"webpack": "^5.99.1",
+		"webpack-cli": "^6.0.1",
+		"prettier": "^3.5.3",
+		"@types/bootstrap": "^5.2.10",
+		"bootstrap": "^5.3.6",
+		"dotenv-webpack": "^8.1.0"
+	},
+	"engines": {
+		"node": ">=20"
+	},
+	"license": "MIT"
 }

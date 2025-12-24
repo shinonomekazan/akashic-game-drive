@@ -6,7 +6,7 @@ import { signInWithGoogle, signOutCurrentUser, watchAuthChanges } from "./auth";
 import { initializeFirebase, type FirebaseInstance } from "./firebase";
 import { appConfig } from "./config";
 import type { AppConfig } from "./config.types";
-import { isDebugMode, navigateTo, qs, qsStrict } from "./utils";
+import { isDebugMode, navigateTo, qsStrict } from "./utils";
 
 type Route = { name: "top" } | { name: "login" } | { name: "my" };
 

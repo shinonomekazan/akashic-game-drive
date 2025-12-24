@@ -1,0 +1,49 @@
+body {
+	background: #ffffff;
+	color: #212529;
+}
+
+#app-root {
+	min-height: 100vh;
+}
+
+.agd-page {
+	padding: 24px 0 40px;
+}
+
+.agd-toast {
+	position: fixed;
+	right: 16px;
+	bottom: 16px;
+	z-index: 1080;
+	background: #ffffff;
+	border: 1px solid #dee2e6;
+	border-left: 4px solid #198754;
+	padding: 12px 16px;
+	border-radius: 10px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+	transition: opacity 0.3s ease;
+	opacity: 0;
+	color: #212529;
+	max-width: 320px;
+}
+
+.agd-toast.error {
+	border-left-color: #dc3545;
+}
+
+.agd-thumb {
+	max-width: 220px;
+}
+
+.agd-thumb-sm {
+	width: 72px;
+	height: 72px;
+	object-fit: cover;
+}
+
+@media (max-width: 640px) {
+	.agd-page {
+		padding: 16px 0 32px;
+	}
+}

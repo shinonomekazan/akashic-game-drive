@@ -14,13 +14,9 @@ export function qsStrictAll<T extends Element>(parent: Element | Document, query
 	return result;
 }
 
-let searchParams: URLSearchParams | null = null;
-
 export function isXXXMode(param: string) {
-	if (searchParams == null) {
-		searchParams = new URLSearchParams(location.search);
-	}
-	return searchParams.has(param);
+	const params = new URLSearchParams(location.search);
+	return params.has(param);
 }
 
 export function isDebugMode() {
@@ -29,9 +25,11 @@ export function isDebugMode() {
 
 export function navigateTo(path: string) {
 	const url = new URL(location.href);
-	url.hash = path;
+	url.hash = "";
+	url.pathname = path;
 	if (isDebugMode()) {
 		url.searchParams.set("debug", "true");
 	}
-	location.href = url.toString();
+	history.pushState({}, "", url.toString());
+	window.dispatchEvent(new PopStateEvent("popstate"));
 }

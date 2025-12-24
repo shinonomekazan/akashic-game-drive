@@ -22,7 +22,6 @@ export class App {
 	rootEl: HTMLElement;
 	toastEl: HTMLElement;
 	state: AppState;
-	renderToken: number;
 
 	constructor(config: AppConfig = appConfig as AppConfig) {
 		this.config = config;
@@ -34,7 +33,6 @@ export class App {
 			user: null,
 			loading: true,
 		};
-		this.renderToken = 0;
 		this.connectEmulatorIfDebug();
 	}
 
@@ -48,7 +46,7 @@ export class App {
 			await this.render();
 		});
 
-		window.addEventListener("hashchange", async () => {
+		window.addEventListener("popstate", async () => {
 			this.state = { ...this.state, route: this.parseRoute() };
 			await this.render();
 		});
@@ -62,23 +60,20 @@ export class App {
 	}
 
 	parseRoute(): Route {
-		const hash = window.location.hash.replace(/^#/, "") || "/";
-		if (hash === "/") {
+		const path = window.location.pathname || "/";
+		if (path === "/") {
 			return { name: "top" };
 		}
-		if (hash.startsWith("/login")) {
+		if (path.startsWith("/login")) {
 			return { name: "login" };
 		}
-		if (hash.startsWith("/my")) {
+		if (path.startsWith("/my")) {
 			return { name: "my" };
 		}
 		return { name: "top" };
 	}
 
 	async render() {
-		const token = ++this.renderToken;
-		if (token !== this.renderToken) return;
-
 		if (this.state.loading) {
 			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
 			return;

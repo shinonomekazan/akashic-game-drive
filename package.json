@@ -5,9 +5,8 @@
   "type": "module",
   "scripts": {
     "format": "prettier --write .",
-    "init:config": "cp src/config.example.ts src/config.ts",
-    "build": "cross-env APP_ENV=debug webpack",
-    "build:watch": "cross-env APP_ENV=debug webpack --watch",
+    "build": "webpack",
+    "build:watch": "webpack --watch",
     "start:emulator": "firebase emulators:start",
     "deploy:firestore": "firebase deploy --only firestore",
     "deploy:functions": "firebase deploy --only functions",
@@ -28,7 +27,6 @@
     "prettier": "^3.5.3",
     "@types/bootstrap": "^5.2.10",
     "bootstrap": "^5.3.6",
-    "cross-env": "^10.1.0",
     "dotenv-webpack": "^8.1.0"
   },
   "engines": {

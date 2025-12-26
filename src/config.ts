@@ -1,6 +1,17 @@
 import type { AppConfig } from "./config.types";
 
-function requireEnv(key: string, value: string | undefined) {
+const fallbackEnv = {
+	FIREBASE_API_KEY: "AIzaSyC6ZUT58a66kchkuRAqrca6oPliykDSG7s",
+	FIREBASE_AUTH_DOMAIN: "akashic-game-drive.firebaseapp.com",
+	FIREBASE_PROJECT_ID: "akashic-game-drive",
+	FIREBASE_STORAGE_BUCKET: "akashic-game-drive.firebasestorage.app",
+	FIREBASE_MESSAGING_SENDER_ID: "74790524710",
+	FIREBASE_APP_ID: "1:74790524710:web:8e19cae4759d77d56fd3e7",
+	FIREBASE_MEASUREMENT_ID: "G-HHV36QKTGK",
+};
+
+function resolveEnv(key: keyof typeof fallbackEnv): string {
+	const value = process.env[key] ?? fallbackEnv[key];
 	if (!value || value === "undefined") {
 		throw new Error(`${key} が設定されていません`);
 	}
@@ -10,13 +21,13 @@ function requireEnv(key: string, value: string | undefined) {
 export function configure(): AppConfig {
 	return {
 		firebaseConfig: {
-			apiKey: requireEnv("FIREBASE_API_KEY", process.env.FIREBASE_API_KEY),
-			authDomain: requireEnv("FIREBASE_AUTH_DOMAIN", process.env.FIREBASE_AUTH_DOMAIN),
-			projectId: requireEnv("FIREBASE_PROJECT_ID", process.env.FIREBASE_PROJECT_ID),
-			storageBucket: requireEnv("FIREBASE_STORAGE_BUCKET", process.env.FIREBASE_STORAGE_BUCKET),
-			messagingSenderId: requireEnv("FIREBASE_MESSAGING_SENDER_ID", process.env.FIREBASE_MESSAGING_SENDER_ID),
-			appId: requireEnv("FIREBASE_APP_ID", process.env.FIREBASE_APP_ID),
-			measurementId: process.env.FIREBASE_MEASUREMENT_ID ?? "",
+			apiKey: resolveEnv("FIREBASE_API_KEY"),
+			authDomain: resolveEnv("FIREBASE_AUTH_DOMAIN"),
+			projectId: resolveEnv("FIREBASE_PROJECT_ID"),
+			storageBucket: resolveEnv("FIREBASE_STORAGE_BUCKET"),
+			messagingSenderId: resolveEnv("FIREBASE_MESSAGING_SENDER_ID"),
+			appId: resolveEnv("FIREBASE_APP_ID"),
+			measurementId: resolveEnv("FIREBASE_MEASUREMENT_ID"),
 		},
 	};
 }

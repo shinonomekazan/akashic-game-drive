@@ -1,19 +1,9 @@
-import type { ApiConfig } from "../config.types";
-import { callApi } from "./client";
+import type { Client } from "./Client";
 
 interface CreateUserResponse {
 	data?: unknown;
 }
 
-export async function createUser(apiConfig: ApiConfig, useEmulator: boolean, idToken: string, name: string) {
-	return callApi<CreateUserResponse>(
-		apiConfig,
-		useEmulator,
-		"POST",
-		"/users",
-		{
-			name,
-		},
-		idToken,
-	);
+export async function createUser(client: Client, name: string) {
+	return client.callWithAuthorization<CreateUserResponse>("POST", "/users", JSON.stringify({ name }));
 }

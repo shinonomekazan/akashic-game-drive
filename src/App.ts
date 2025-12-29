@@ -10,6 +10,7 @@ import type { UserProfile } from "./types";
 import { isDebugMode, navigateTo, qsStrict } from "./utils";
 import { getUser } from "./resolvers";
 import { connectFirestoreEmulator } from "firebase/firestore";
+import { Client } from "./api/Client";
 import { createUser } from "./api/users";
 
 type Route = { name: "top" } | { name: "login" } | { name: "my" };
@@ -26,6 +27,7 @@ interface AppState {
 export class App {
 	firebase: FirebaseInstance;
 	config: AppConfig;
+	apiClient: Client;
 	rootEl: HTMLElement;
 	toastEl: HTMLElement;
 	state: AppState;
@@ -33,6 +35,10 @@ export class App {
 	constructor(config: AppConfig = appConfig as AppConfig) {
 		this.config = config;
 		this.firebase = initializeFirebase(this.config.firebaseConfig);
+		this.apiClient = new Client({
+			apiConfig: this.config.apiConfig,
+			useEmulator: isDebugMode(),
+		});
 		this.rootEl = qsStrict<HTMLElement>("#app-root");
 		this.toastEl = qsStrict<HTMLElement>("#toast");
 		this.state = {
@@ -48,6 +54,7 @@ export class App {
 
 	async main() {
 		watchAuthChanges(this.firebase, async (user) => {
+			this.apiClient.idTokenFunction = user ? () => user.getIdToken() : undefined;
 			this.state = {
 				...this.state,
 				user,
@@ -167,8 +174,7 @@ export class App {
 
 	async createUserIfMissing(user: User) {
 		const name = user.displayName || user.email || "User";
-		const idToken = await user.getIdToken();
-		await createUser(this.config.apiConfig, isDebugMode(), idToken, name);
+		await createUser(this.apiClient, name);
 	}
 
 	renderMyProfile() {

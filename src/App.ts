@@ -183,8 +183,8 @@ export class App {
 					<div class="agd-meta">作成日: ${createdAt}</div>
 				</div>
 				<div class="agd-actions">
-					<button id="edit-profile" class="btn btn-outline-primary btn-sm">編集</button>
-					<button id="logout" class="btn btn-outline-secondary btn-sm">ログアウト</button>
+					<button id="edit-profile" class="btn btn-outline-primary">編集</button>
+					<button id="logout" class="btn btn-outline-secondary">ログアウト</button>
 				</div>
 			</div>
 			<div class="card shadow-sm">

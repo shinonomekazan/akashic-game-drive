@@ -10,6 +10,7 @@ import type { UserProfile } from "./types";
 import { isDebugMode, navigateTo, qsStrict } from "./utils";
 import { getUser } from "./resolvers";
 import { connectFirestoreEmulator } from "firebase/firestore";
+import { createUser } from "./api/users";
 
 type Route = { name: "top" } | { name: "login" } | { name: "my" };
 
@@ -143,7 +144,11 @@ export class App {
 		}
 		this.state = { ...this.state, profileLoading: true };
 		try {
-			const profile = await getUser(this.firebase.firestore, currentUser.uid);
+			let profile = await getUser(this.firebase.firestore, currentUser.uid);
+			if (!profile) {
+				await this.createUserIfMissing(currentUser);
+				profile = await getUser(this.firebase.firestore, currentUser.uid);
+			}
 			this.state = {
 				...this.state,
 				profile,
@@ -158,6 +163,12 @@ export class App {
 			};
 			this.showToast((err as Error).message || "ユーザー情報の取得に失敗しました", "error");
 		}
+	}
+
+	async createUserIfMissing(user: User) {
+		const name = user.displayName || user.email || "User";
+		const idToken = await user.getIdToken();
+		await createUser(this.config.apiConfig, isDebugMode(), idToken, name);
 	}
 
 	renderMyProfile() {
@@ -179,7 +190,7 @@ export class App {
 			${profileNotice}
 			<div class="agd-my-header">
 				<div>
-					<div class="agd-user-name">${this.escapeHtml(name)} マイペー</div>
+					<div class="agd-user-name">${this.escapeHtml(name)} マイページ</div>
 					<div class="agd-meta">作成日: ${createdAt}</div>
 				</div>
 				<div class="agd-actions">

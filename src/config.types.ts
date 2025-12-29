@@ -8,6 +8,13 @@ export interface FirebaseConfig {
 	measurementId: string;
 }
 
+export interface ApiConfig {
+	baseUrl: string;
+	emulatorBaseUrl?: string;
+	apiKey?: string;
+}
+
 export interface AppConfig {
 	firebaseConfig: FirebaseConfig;
+	apiConfig: ApiConfig;
 }

@@ -23,11 +23,7 @@ jobs:
             functions/package-lock.json
       - name:  デプロイ用.envひな型の作成
         run: cp ./functions/.env.debug ./functions/.env
-      - name: サービスアカウントファイルの作成
-        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_AKASHIC_GAME_DRIVE }}' > $RUNNER_TEMP/gcloud.json
       - name: npm ci
         run: npm ci && npm --prefix ./functions ci
       - name: Deploy functions
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcloud.json
-        run: npm run deploy:functions
+        run: npm run deploy:functions -- --token=${{ secrets.FIREBASE_TOKEN_AKASHIC_GAME_DRIVE }}

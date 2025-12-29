@@ -10,7 +10,7 @@ import type { UserProfile } from "./types";
 import { isDebugMode, navigateTo, qsStrict } from "./utils";
 import { getUser } from "./resolvers";
 import { connectFirestoreEmulator } from "firebase/firestore";
-import { Client } from "./api/Client";
+import { Client } from "./api/client";
 import { createUser } from "./api/users";
 
 type Route = { name: "top" } | { name: "login" } | { name: "my" };

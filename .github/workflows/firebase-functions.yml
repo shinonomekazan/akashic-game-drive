@@ -21,7 +21,7 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             functions/package-lock.json
-      - name:  デプロイ用.envひな型の作成
+      - name: デプロイ用.envひな型の作成
         run: cp ./functions/.env.debug ./functions/.env
       - name: npm ci
         run: npm ci && npm --prefix ./functions ci

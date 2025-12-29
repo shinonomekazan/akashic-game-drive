@@ -42,6 +42,47 @@ body {
 	object-fit: cover;
 }
 
+.agd-my-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 20px;
+	flex-wrap: wrap;
+}
+
+.agd-label {
+	letter-spacing: 0.08em;
+	font-size: 0.72rem;
+	color: #6c757d;
+}
+
+.agd-user-name {
+	font-size: 1.6rem;
+	font-weight: 600;
+	color: #212529;
+}
+
+.agd-meta {
+	color: #6c757d;
+	font-size: 0.9rem;
+}
+
+.agd-actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.agd-empty {
+	padding: 24px;
+	border: 1px dashed #dee2e6;
+	border-radius: 12px;
+	text-align: center;
+	color: #6c757d;
+	background: #f8f9fa;
+}
+
 @media (max-width: 640px) {
 	.agd-page {
 		padding: 16px 0 32px;

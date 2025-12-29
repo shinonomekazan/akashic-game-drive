@@ -6,7 +6,10 @@ import { signInWithGoogle, signOutCurrentUser, watchAuthChanges } from "./auth";
 import { initializeFirebase, type FirebaseInstance } from "./firebase";
 import { appConfig } from "./config";
 import type { AppConfig } from "./config.types";
+import type { UserProfile } from "./types";
 import { isDebugMode, navigateTo, qsStrict } from "./utils";
+import { getUser } from "./resolvers";
+import { connectFirestoreEmulator } from "firebase/firestore";
 
 type Route = { name: "top" } | { name: "login" } | { name: "my" };
 
@@ -14,6 +17,9 @@ interface AppState {
 	route: Route;
 	user: User | null;
 	loading: boolean;
+	profile: UserProfile | null;
+	profileLoaded: boolean;
+	profileLoading: boolean;
 }
 
 export class App {
@@ -32,6 +38,9 @@ export class App {
 			route: this.parseRoute(),
 			user: null,
 			loading: true,
+			profile: null,
+			profileLoaded: false,
+			profileLoading: false,
 		};
 		this.connectEmulatorIfDebug();
 	}
@@ -42,6 +51,9 @@ export class App {
 				...this.state,
 				user,
 				loading: false,
+				profile: null,
+				profileLoaded: false,
+				profileLoading: false,
 			};
 			await this.render();
 		});
@@ -57,6 +69,7 @@ export class App {
 	connectEmulatorIfDebug() {
 		if (!isDebugMode()) return;
 		connectAuthEmulator(this.firebase.auth, "http://localhost:9099");
+		connectFirestoreEmulator(this.firebase.firestore, "localhost", 8080);
 	}
 
 	parseRoute(): Route {
@@ -84,7 +97,7 @@ export class App {
 				this.renderLogin();
 				break;
 			case "my":
-				this.renderMy();
+				await this.renderMy();
 				break;
 			case "top":
 			default:
@@ -101,33 +114,108 @@ export class App {
 		navigateTo("/login");
 	}
 
-	renderMy() {
+	async renderMy() {
 		const signedIn = this.state.user !== null;
 		if (!signedIn) {
 			navigateTo("/login");
 			return;
 		}
 
-		const displayName = this.escapeHtml(this.state.user?.displayName ?? "ユーザー");
-		this.setContent(
-			`
-		<div class="position-absolute top-0 end-0 p-3">
-			<button id="logout" class="btn btn-outline-secondary">ログアウト</button>
-		</div>
-		<div class="d-flex align-items-center justify-content-center min-vh-100">
-			<div class="text-center">
-				<div class="display-6 fw-semibold text-dark">${displayName}</div>
-			</div>
-		</div>
-      `,
-			true,
-		);
+		if (this.state.profileLoading) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			return;
+		}
 
+		if (!this.state.profileLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadUserProfile();
+			await this.render();
+			return;
+		}
+
+		this.renderMyProfile();
+	}
+
+	async loadUserProfile() {
+		const currentUser = this.state.user;
+		if (!currentUser || this.state.profileLoading) {
+			return;
+		}
+		this.state = { ...this.state, profileLoading: true };
+		try {
+			const profile = await getUser(this.firebase.firestore, currentUser.uid);
+			this.state = {
+				...this.state,
+				profile,
+				profileLoaded: true,
+				profileLoading: false,
+			};
+		} catch (err) {
+			this.state = {
+				...this.state,
+				profileLoaded: true,
+				profileLoading: false,
+			};
+			this.showToast((err as Error).message || "ユーザー情報の取得に失敗しました", "error");
+		}
+	}
+
+	renderMyProfile() {
+		this.renderMyContent(this.state.profile);
+	}
+
+	renderMyContent(profile: UserProfile | null) {
+		const name = profile?.name ?? "-";
+		const createdAt = this.formatTimestamp(profile?.createdAt);
+		const profileNotice = profile
+			? ""
+			: `
+			<div class="alert alert-warning d-flex align-items-center" role="alert">
+				<span>ユーザー情報が未登録です。バックエンドで作成してください。</span>
+			</div>
+		`;
+
+		this.setContent(`
+			${profileNotice}
+			<div class="agd-my-header">
+				<div>
+					<div class="agd-user-name">${this.escapeHtml(name)} マイペー</div>
+					<div class="agd-meta">作成日: ${createdAt}</div>
+				</div>
+				<div class="agd-actions">
+					<button id="edit-profile" class="btn btn-outline-primary">編集</button>
+					<button id="logout" class="btn btn-outline-secondary">ログアウト</button>
+				</div>
+			</div>
+			<div class="card shadow-sm">
+				<div class="card-body">
+					<div class="d-flex align-items-center justify-content-between mb-3">
+						<h2 class="h6 mb-0">コンテンツ一覧</h2>
+					</div>
+					<div class="agd-empty">コンテンツはまだありません。</div>
+				</div>
+			</div>
+		`);
+
+		this.bindMyActions();
+	}
+
+	bindMyActions() {
 		const logoutBtn = qsStrict<HTMLButtonElement>("#logout");
 		logoutBtn.addEventListener("click", async () => {
 			await signOutCurrentUser(this.firebase);
 			navigateTo("/login");
 		});
+
+		const editBtn = qsStrict<HTMLButtonElement>("#edit-profile");
+		editBtn.addEventListener("click", () => {
+			this.showToast("この機能は準備中です");
+		});
+	}
+
+	formatTimestamp(value: UserProfile["createdAt"]) {
+		if (!value) return "-";
+		return value.toDate().toLocaleString("vi-VN");
 	}
 
 	renderLogin() {

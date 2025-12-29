@@ -22,6 +22,7 @@ interface AppState {
 	profile: UserProfile | null;
 	profileLoaded: boolean;
 	profileLoading: boolean;
+	needsProfile: boolean;
 }
 
 export class App {
@@ -48,6 +49,7 @@ export class App {
 			profile: null,
 			profileLoaded: false,
 			profileLoading: false,
+			needsProfile: false,
 		};
 		this.connectEmulatorIfDebug();
 	}
@@ -62,6 +64,7 @@ export class App {
 				profile: null,
 				profileLoaded: false,
 				profileLoading: false,
+				needsProfile: false,
 			};
 			await this.render();
 		});
@@ -141,6 +144,11 @@ export class App {
 			return;
 		}
 
+		if (this.state.needsProfile) {
+			this.renderProfileSetup();
+			return;
+		}
+
 		this.renderMyProfile();
 	}
 
@@ -153,32 +161,93 @@ export class App {
 		try {
 			let profile = await getUser(this.firebase.firestore, currentUser.uid);
 			if (!profile) {
-				await this.createUserIfMissing(currentUser);
-				profile = await getUser(this.firebase.firestore, currentUser.uid);
+				this.state = {
+					...this.state,
+					profile: null,
+					profileLoaded: true,
+					profileLoading: false,
+					needsProfile: true,
+				};
+				return;
 			}
 			this.state = {
 				...this.state,
 				profile,
 				profileLoaded: true,
 				profileLoading: false,
+				needsProfile: false,
 			};
 		} catch (err) {
 			this.state = {
 				...this.state,
 				profileLoaded: true,
 				profileLoading: false,
+				needsProfile: false,
 			};
 			this.showToast((err as Error).message || "ユーザー情報の取得に失敗しました", "error");
 		}
 	}
 
-	async createUserIfMissing(user: User) {
-		const name = user.displayName || user.email || "User";
-		await createUser(this.apiClient, name);
-	}
-
 	renderMyProfile() {
 		this.renderMyContent(this.state.profile);
+	}
+
+	renderProfileSetup() {
+		this.setContent(`
+			<div class="row justify-content-center">
+				<div class="col-md-6 col-lg-5">
+					<div class="card shadow-sm">
+						<div class="card-body">
+							<h1 class="h5 mb-3">プロフィール登録</h1>
+							<form id="profile-setup-form">
+								<div class="mb-3">
+									<label class="form-label" for="profile-name">名前</label>
+									<input id="profile-name" class="form-control" type="text" placeholder="名前を入力" autocomplete="name" required />
+								</div>
+								<div class="d-grid">
+									<button id="profile-save" class="btn btn-primary" type="submit">確定</button>
+								</div>
+							</form>
+						</div>
+					</div>
+				</div>
+			</div>
+		`);
+
+		const form = qsStrict<HTMLFormElement>("#profile-setup-form");
+		const nameInput = qsStrict<HTMLInputElement>("#profile-name");
+		const saveBtn = qsStrict<HTMLButtonElement>("#profile-save");
+		nameInput.focus();
+
+		form.addEventListener("submit", async (event) => {
+			event.preventDefault();
+			const name = nameInput.value.trim();
+			if (!name) {
+				this.showToast("名前を入力してください", "error");
+				nameInput.focus();
+				return;
+			}
+
+			saveBtn.disabled = true;
+			saveBtn.textContent = "保存中...";
+			try {
+				await createUser(this.apiClient, name);
+				this.showToast("プロフィールを登録しました");
+				this.state = {
+					...this.state,
+					profile: null,
+					profileLoaded: false,
+					profileLoading: false,
+					needsProfile: false,
+				};
+				await this.render();
+			} catch (err) {
+				this.showToast((err as Error).message || "ユーザー情報の登録に失敗しました", "error");
+			} finally {
+				saveBtn.disabled = false;
+				saveBtn.textContent = "確定";
+			}
+		});
 	}
 
 	renderMyContent(profile: UserProfile | null) {

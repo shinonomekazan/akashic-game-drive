@@ -1,0 +1,11 @@
+- origin:
+    - "*"
+  method:
+    - GET
+    - PUT
+    - OPTIONS
+  responseHeader:
+    - Content-Type
+    - Cache-Control
+    - x-goog-content-length-range
+  maxAgeSeconds: 3600

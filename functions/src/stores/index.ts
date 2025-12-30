@@ -1,4 +1,4 @@
-import { UserProfile } from "../types";
+import { ContentRecord, UserProfile } from "../types";
 import { Firestore, Timestamp } from "@google-cloud/firestore";
 import { eraseUndefined } from "../utils";
 
@@ -23,6 +23,44 @@ export function storeUser(firestore: Firestore, user: Omit<UserProfile, "created
 				eraseUndefined({
 					name: user.name,
 					photoURL: user.photoURL,
+					createdAt: Timestamp.now(),
+					updatedAt: Timestamp.now(),
+				}),
+			);
+		}
+	});
+}
+
+export function storeContent(
+	firestore: Firestore,
+	content: Pick<ContentRecord, "ownerId" | "title" | "description" | "zipUrl" | "thumbnailUrl">,
+) {
+	return firestore.runTransaction(async (transaction) => {
+		const userDoc = firestore.collection("contents").doc();
+		const doc = await transaction.get(userDoc);
+		if (doc.exists) {
+			// Update existing content
+			transaction.update(
+				userDoc,
+				eraseUndefined({
+					ownerId: content.ownerId,
+					title: content.title,
+					description: content.description,
+					zipUrl: content.zipUrl,
+					thumbnailUrl: content.thumbnailUrl,
+					updatedAt: Timestamp.now(),
+				}),
+			);
+		} else {
+			// Create new content
+			transaction.set(
+				userDoc,
+				eraseUndefined({
+					ownerId: content.ownerId,
+					title: content.title,
+					description: content.description,
+					zipUrl: content.zipUrl,
+					thumbnailUrl: content.thumbnailUrl,
 					createdAt: Timestamp.now(),
 					updatedAt: Timestamp.now(),
 				}),

@@ -13,7 +13,7 @@ import { connectFirestoreEmulator } from "firebase/firestore";
 import { Client } from "./api/client";
 import { createUser } from "./api/users";
 
-type Route = { name: "top" } | { name: "login" } | { name: "my" };
+type Route = { name: "top" } | { name: "login" } | { name: "my" } | { name: "my-edit" };
 
 interface AppState {
 	route: Route;
@@ -91,6 +91,9 @@ export class App {
 		if (path.startsWith("/login")) {
 			return { name: "login" };
 		}
+		if (path.startsWith("/my/edit")) {
+			return { name: "my-edit" };
+		}
 		if (path.startsWith("/my")) {
 			return { name: "my" };
 		}
@@ -106,6 +109,9 @@ export class App {
 		switch (this.state.route.name) {
 			case "login":
 				this.renderLogin();
+				break;
+			case "my-edit":
+				await this.renderMyEdit();
 				break;
 			case "my":
 				await this.renderMy();
@@ -152,6 +158,28 @@ export class App {
 		this.renderMyProfile();
 	}
 
+	async renderMyEdit() {
+		const signedIn = this.state.user !== null;
+		if (!signedIn) {
+			navigateTo("/login");
+			return;
+		}
+
+		if (this.state.profileLoading) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			return;
+		}
+
+		if (!this.state.profileLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadUserProfile();
+			await this.render();
+			return;
+		}
+
+		this.renderProfileSetup();
+	}
+
 	async loadUserProfile() {
 		const currentUser = this.state.user;
 		if (!currentUser || this.state.profileLoading) {
@@ -193,6 +221,8 @@ export class App {
 	}
 
 	renderProfileSetup() {
+		const isEditRoute = this.state.route.name === "my-edit";
+		const existingName = isEditRoute ? (this.state.profile?.name ?? "") : "";
 		this.setContent(`
 			<div class="row justify-content-center">
 				<div class="col-md-6 col-lg-5">
@@ -217,6 +247,7 @@ export class App {
 		const form = qsStrict<HTMLFormElement>("#profile-setup-form");
 		const nameInput = qsStrict<HTMLInputElement>("#profile-name");
 		const saveBtn = qsStrict<HTMLButtonElement>("#profile-save");
+		nameInput.value = existingName;
 		nameInput.focus();
 
 		form.addEventListener("submit", async (event) => {
@@ -240,6 +271,10 @@ export class App {
 					profileLoading: false,
 					needsProfile: false,
 				};
+				if (isEditRoute) {
+					navigateTo("/my");
+					return;
+				}
 				await this.render();
 			} catch (err) {
 				this.showToast((err as Error).message || "ユーザー情報の登録に失敗しました", "error");
@@ -295,7 +330,7 @@ export class App {
 
 		const editBtn = qsStrict<HTMLButtonElement>("#edit-profile");
 		editBtn.addEventListener("click", () => {
-			this.showToast("この機能は準備中です");
+			navigateTo("/my/edit");
 		});
 	}
 

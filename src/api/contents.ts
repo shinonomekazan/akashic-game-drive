@@ -15,6 +15,7 @@ interface ApiResponse<T> {
 export interface CreateContentUploadUrlInput {
 	kind: "zip" | "thumbnail";
 	mimeType: string;
+	fileName?: string;
 }
 
 export interface CreateContentUploadUrlResult {

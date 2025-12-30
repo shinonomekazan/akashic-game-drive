@@ -27,6 +27,7 @@ interface CreateUploadUrlParams {
 	authorization: string;
 	kind: "zip" | "thumbnail";
 	mimeType: string;
+	fileName?: string;
 }
 
 interface ListMineParams {
@@ -74,12 +75,14 @@ export class ContentsController extends BaseController {
 					params.headerBearerTokenValidator(),
 					validators.body("kind").isString().isIn(["zip", "thumbnail"]),
 					validators.body("mimeType").isString().notEmpty(),
+					validators.body("fileName").optional().isString().notEmpty(),
 				],
 				(context) =>
 					({
 						authorization: context.req.headers.authorization,
 						kind: context.req.body.kind,
 						mimeType: context.req.body.mimeType,
+						fileName: context.req.body.fileName,
 					}) as CreateUploadUrlParams,
 			),
 		]);
@@ -138,8 +141,24 @@ export class ContentsController extends BaseController {
 		const ext =
 			kind === "zip" ? "zip" : mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
 		const maxSize = kind === "zip" ? MAX_ZIP_SIZE : MAX_THUMB_SIZE;
+		const fileName = p.fileName?.trim();
+		if (kind === "zip") {
+			if (!fileName) {
+				throw new fw.types.BadRequest("ファイル名が不正です");
+			}
+			if (/[\\/]/.test(fileName)) {
+				throw new fw.types.BadRequest("ファイル名に使用できない文字が含まれています");
+			}
+			if (!fileName.toLowerCase().endsWith(".zip")) {
+				throw new fw.types.BadRequest("ZIPファイルのみ対応しています");
+			}
+		}
 		const suffix = Math.random().toString(36).slice(2, 10);
-		const destination = `uploads/${verifyResult.uid}/contents/${kind}/${Date.now()}-${suffix}.${ext}`;
+		const objectName =
+			kind === "zip" && fileName
+				? fileName
+				: `${Date.now()}-${suffix}.${ext}`;
+		const destination = `uploads/${verifyResult.uid}/contents/${kind}/${objectName}`;
 		const [url] = await storage
 			.bucket()
 			.file(destination)

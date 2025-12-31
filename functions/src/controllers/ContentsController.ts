@@ -178,7 +178,7 @@ export class ContentsController extends BaseController {
 		};
 	}
 
-	private async ensureContentLimit(userId: string) {
+	async ensureContentLimit(userId: string) {
 		const snapshot = await this.app.firestore
 			.collection("contents")
 			.where("ownerId", "==", userId)

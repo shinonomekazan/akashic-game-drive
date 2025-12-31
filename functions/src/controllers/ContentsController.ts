@@ -11,8 +11,9 @@ import { storeContent } from "../stores";
 
 const ZIP_MIME_TYPES = ["application/zip", "application/x-zip-compressed"];
 const IMAGE_MIME_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-const MAX_ZIP_SIZE = 200 * 1024 * 1024;
+const MAX_ZIP_SIZE = 20 * 1024 * 1024;
 const MAX_THUMB_SIZE = 20 * 1024 * 1024;
+const MAX_CONTENTS_PER_USER = 10;
 const CACHE_CONTROL = "public,max-age=604800,immutable";
 
 interface CreateParams {
@@ -92,6 +93,7 @@ export class ContentsController extends BaseController {
 	async post(context: Context) {
 		const p = context.params as CreateParams;
 		const verifyResult = await this.verify(p.authorization);
+		await this.ensureContentLimit(verifyResult.uid);
 		const contentData = {
 			ownerId: verifyResult.uid,
 			title: p.title,
@@ -129,6 +131,7 @@ export class ContentsController extends BaseController {
 	async createUploadUrl(context: Context) {
 		const p = context.params as CreateUploadUrlParams;
 		const verifyResult = await this.verify(p.authorization);
+		await this.ensureContentLimit(verifyResult.uid);
 		const storage = getStorage(this.app.firebaseApp);
 		const kind = p.kind;
 		const mimeType = p.mimeType;
@@ -154,10 +157,7 @@ export class ContentsController extends BaseController {
 			}
 		}
 		const suffix = Math.random().toString(36).slice(2, 10);
-		const objectName =
-			kind === "zip" && fileName
-				? fileName
-				: `${Date.now()}-${suffix}.${ext}`;
+		const objectName = kind === "zip" && fileName ? fileName : `${Date.now()}-${suffix}.${ext}`;
 		const destination = `uploads/${verifyResult.uid}/contents/${kind}/${objectName}`;
 		const [url] = await storage
 			.bucket()
@@ -176,5 +176,16 @@ export class ContentsController extends BaseController {
 			filePath: destination,
 			url,
 		};
+	}
+
+	private async ensureContentLimit(userId: string) {
+		const snapshot = await this.app.firestore
+			.collection("contents")
+			.where("ownerId", "==", userId)
+			.limit(MAX_CONTENTS_PER_USER)
+			.get();
+		if (snapshot.size >= MAX_CONTENTS_PER_USER) {
+			throw new fw.types.Forbidden("投稿数の上限に達しました");
+		}
 	}
 }

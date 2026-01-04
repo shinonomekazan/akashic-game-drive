@@ -8,6 +8,13 @@ export interface CreateContentInput {
 	thumbnailUrl: string;
 }
 
+export interface UpdateContentInput {
+	title: string;
+	description?: string;
+	zipUrl?: string;
+	thumbnailUrl?: string;
+}
+
 interface ApiResponse<T> {
 	data: T;
 }
@@ -16,6 +23,7 @@ export interface CreateContentUploadUrlInput {
 	kind: "zip" | "thumbnail";
 	mimeType: string;
 	fileName?: string;
+	contentId?: string;
 }
 
 export interface CreateContentUploadUrlResult {
@@ -25,6 +33,14 @@ export interface CreateContentUploadUrlResult {
 
 export async function createContent(client: Client, input: CreateContentInput) {
 	return client.callWithAuthorization<{ content: ContentRecord }>("POST", "/contents", JSON.stringify(input));
+}
+
+export async function updateContent(client: Client, contentId: string, input: UpdateContentInput) {
+	return client.callWithAuthorization<ApiResponse<{ result: string }>>(
+		"PUT",
+		`/contents/${contentId}`,
+		JSON.stringify(input),
+	);
 }
 
 export async function listMyContents(client: Client) {

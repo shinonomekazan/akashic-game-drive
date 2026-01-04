@@ -25,7 +25,8 @@ export type Route =
 	| { name: "login" }
 	| { name: "my" }
 	| { name: "my-edit" }
-	| { name: "my-contents" };
+	| { name: "my-contents" }
+	| { name: "content-edit"; contentId: string };
 
 export interface AppState {
 	route: Route;

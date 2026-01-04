@@ -38,6 +38,10 @@
 			{
 				"source": "/my/contents",
 				"destination": "/index.html"
+			},
+			{
+				"source": "/contents/*/edit",
+				"destination": "/index.html"
 			}
 		],
 		"headers": [

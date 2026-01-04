@@ -7,7 +7,8 @@ import * as params from "../params";
 import { Router } from "express";
 import { getStorage } from "firebase-admin/storage";
 import type { ContentRecord } from "../types";
-import { storeContent } from "../stores";
+import { storeContent, updateContent } from "../stores";
+import * as resolvers from "../resolvers";
 
 const ZIP_MIME_TYPES = ["application/zip", "application/x-zip-compressed"];
 const IMAGE_MIME_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
@@ -29,10 +30,20 @@ interface CreateUploadUrlParams {
 	kind: "zip" | "thumbnail";
 	mimeType: string;
 	fileName?: string;
+	contentId?: string;
 }
 
 interface ListMineParams {
 	authorization: string;
+}
+
+interface UpdateParams {
+	authorization: string;
+	id: string;
+	title: string;
+	description?: string;
+	zipUrl?: string;
+	thumbnailUrl?: string;
 }
 
 export class ContentsController extends BaseController {
@@ -57,11 +68,32 @@ export class ContentsController extends BaseController {
 					}) as CreateParams,
 			),
 		];
+		this.validators.put = [
+			fw.params.InstantValidator(
+				[
+					params.headerBearerTokenValidator(),
+					validators.param("id").isString().notEmpty(),
+					validators.body("title").isString().notEmpty(),
+					validators.body("description").optional().isString(),
+					validators.body("zipUrl").optional().isString().notEmpty(),
+					validators.body("thumbnailUrl").optional().isString().notEmpty(),
+				],
+				(context) =>
+					({
+						authorization: context.req.headers.authorization,
+						id: context.req.params.id,
+						title: context.req.body.title,
+						description: context.req.body.description,
+						zipUrl: context.req.body.zipUrl,
+						thumbnailUrl: context.req.body.thumbnailUrl,
+					}) as UpdateParams,
+			),
+		];
 	}
 
 	register(basePath: string): Router {
 		const router = super.register(basePath);
-		this.registerRoute(router, "GET", "/me", this.listMine, [
+		this.registerRoute(router, "GET", "/me", this.listContents, [
 			fw.params.InstantValidator(
 				[params.headerBearerTokenValidator()],
 				(context) =>
@@ -77,6 +109,7 @@ export class ContentsController extends BaseController {
 					validators.body("kind").isString().isIn(["zip", "thumbnail"]),
 					validators.body("mimeType").isString().notEmpty(),
 					validators.body("fileName").optional().isString().notEmpty(),
+					validators.body("contentId").optional().isString().notEmpty(),
 				],
 				(context) =>
 					({
@@ -84,6 +117,7 @@ export class ContentsController extends BaseController {
 						kind: context.req.body.kind,
 						mimeType: context.req.body.mimeType,
 						fileName: context.req.body.fileName,
+						contentId: context.req.body.contentId,
 					}) as CreateUploadUrlParams,
 			),
 		]);
@@ -109,29 +143,47 @@ export class ContentsController extends BaseController {
 		};
 	}
 
-	async listMine(context: Context) {
+	async listContents(context: Context) {
 		const p = context.params as ListMineParams;
 		const verifyResult = await this.verify(p.authorization);
-		const snapshot = await this.app.firestore
-			.collection("contents")
-			.where("ownerId", "==", verifyResult.uid)
-			.get();
-		const contents = snapshot.docs.map((doc) => {
-			const data = doc.data() as Omit<ContentRecord, "id">;
-			return {
-				id: doc.id,
-				...data,
-			} as ContentRecord;
-		});
+		return resolvers.contents.listContents(this.app.firestore, verifyResult.uid);
+	}
+
+	async put(context: Context) {
+		const p = context.params as UpdateParams;
+		const verifyResult = await this.verify(p.authorization);
+		const result = await resolvers.contents.resolve(this.app.firestore, p.id, verifyResult.uid);
+		if (result === null) {
+			throw new fw.types.NotFound("コンテンツが見つかりません");
+		}
+		await updateContent(
+			this.app.firestore,
+			{
+				id: p.id,
+				title: p.title,
+				description: p.description,
+				zipUrl: p.zipUrl,
+				thumbnailUrl: p.thumbnailUrl,
+			},
+			verifyResult.uid,
+		);
 		return {
-			contents,
+			result: "ok",
 		};
 	}
 
 	async createUploadUrl(context: Context) {
 		const p = context.params as CreateUploadUrlParams;
 		const verifyResult = await this.verify(p.authorization);
-		await this.ensureContentLimit(verifyResult.uid);
+		const contentId = p.contentId?.trim();
+		if (contentId) {
+			const result = await resolvers.contents.resolve(this.app.firestore, contentId, verifyResult.uid);
+			if (result === null) {
+				throw new fw.types.NotFound("コンテンツが見つかりません");
+			}
+		} else {
+			await this.ensureContentLimit(verifyResult.uid);
+		}
 		const storage = getStorage(this.app.firebaseApp);
 		const kind = p.kind;
 		const mimeType = p.mimeType;
@@ -178,7 +230,7 @@ export class ContentsController extends BaseController {
 		};
 	}
 
-	async ensureContentLimit(userId: string) {
+	private async ensureContentLimit(userId: string) {
 		const snapshot = await this.app.firestore
 			.collection("contents")
 			.where("ownerId", "==", userId)

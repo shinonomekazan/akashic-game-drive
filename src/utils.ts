@@ -75,6 +75,10 @@ export function parseRoute(): Route {
 	if (path.startsWith("/login")) {
 		return { name: "login" };
 	}
+	const contentEditMatch = path.match(/^\/contents\/([^/]+)\/edit\/?$/);
+	if (contentEditMatch) {
+		return { name: "content-edit", contentId: decodeURIComponent(contentEditMatch[1]) };
+	}
 	if (path.startsWith("/my/contents")) {
 		return { name: "my-contents" };
 	}

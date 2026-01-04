@@ -5,13 +5,13 @@ import { signInWithGoogle, signOutCurrentUser, watchAuthChanges } from "./auth";
 import { initializeFirebase, type FirebaseInstance } from "./firebase";
 import { appConfig } from "./config";
 import type { AppConfig } from "./config.types";
-import type { AppState, UserProfile } from "./types";
+import type { AppState, ContentRecord, UserProfile } from "./types";
 import * as utils from "./utils";
 import { getUser } from "./resolvers";
 import { connectFirestoreEmulator } from "firebase/firestore";
 import { connectStorageEmulator, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Client } from "./api/client";
-import { createContent, createContentUploadUrl, listMyContents } from "./api/contents";
+import { createContent, createContentUploadUrl, listMyContents, updateContent } from "./api/contents";
 import { createUser } from "./api/users";
 
 export class App {
@@ -94,6 +94,9 @@ export class App {
 				break;
 			case "my-contents":
 				await this.renderMyContents();
+				break;
+			case "content-edit":
+				await this.renderContentEdit();
 				break;
 			case "my":
 				await this.renderMy();
@@ -199,6 +202,54 @@ export class App {
 		}
 
 		this.renderContentCreate();
+	}
+
+	async renderContentEdit() {
+		const signedIn = this.state.user !== null;
+		if (!signedIn) {
+			utils.navigateTo("/login");
+			return;
+		}
+
+		if (this.state.profileLoading) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			return;
+		}
+
+		if (!this.state.profileLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadUserProfile();
+			await this.render();
+			return;
+		}
+
+		if (this.state.needsProfile) {
+			this.renderProfileSetup();
+			return;
+		}
+
+		if (this.state.contentsLoading) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			return;
+		}
+
+		if (!this.state.contentsLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadMyContents();
+			await this.render();
+			return;
+		}
+
+		const route = this.state.route;
+		const contentId = route.name === "content-edit" ? route.contentId : "";
+		const content = this.state.contents.find((item) => item.id === contentId);
+		if (!content) {
+			this.showToast("コンテンツが見つかりません", "error");
+			utils.navigateTo("/my");
+			return;
+		}
+
+		this.renderContentCreate(content);
 	}
 
 	async loadUserProfile() {
@@ -351,8 +402,19 @@ export class App {
 		});
 	}
 
-	renderContentCreate() {
+	renderContentCreate(content?: ContentRecord) {
+		const isEdit = Boolean(content);
 		const profileName = utils.escapeHtml(this.state.profile?.name ?? "-");
+		const label = isEdit ? "編集" : "投稿";
+		const title = isEdit ? `${profileName} のコンテンツ編集` : `${profileName} のコンテンツ投稿`;
+		const submitLabel = isEdit ? "更新" : "投稿";
+		const requiredAttr = isEdit ? "" : "required";
+		const existingZipLink =
+			isEdit && content?.zipUrl
+				? `<div class="small mt-2">現在のZIP: <a href="${utils.escapeHtml(
+						content.zipUrl,
+					)}" target="_blank" rel="noopener">${utils.escapeHtml(utils.getFileNameFromUrl(content.zipUrl))}</a></div>`
+				: "";
 		this.setContent(`
 			<div class="row justify-content-center">
 				<div class="col-md-8 col-lg-6">
@@ -360,8 +422,8 @@ export class App {
 						<div class="card-body">
 							<div class="d-flex align-items-start justify-content-between mb-3">
 								<div>
-									<div class="agd-label">投稿</div>
-									<h1 class="h5 mb-0">${profileName} のコンテンツ投稿</h1>
+									<div class="agd-label">${label}</div>
+									<h1 class="h5 mb-0">${title}</h1>
 								</div>
 								<button id="back-to-my" class="btn btn-outline-secondary btn-sm" type="button">戻る</button>
 							</div>
@@ -381,8 +443,9 @@ export class App {
 										class="form-control"
 										type="file"
 										accept=".zip,application/zip,application/x-zip-compressed"
-										required
+										${requiredAttr}
 									/>
+									${existingZipLink}
 								</div>
 								<div>
 									<label class="form-label" for="content-thumb">サムネイル画像</label>
@@ -391,7 +454,7 @@ export class App {
 										class="form-control"
 										type="file"
 										accept="image/png,image/jpeg,image/webp"
-										required
+										${requiredAttr}
 									/>
 								</div>
 								<div>
@@ -402,7 +465,7 @@ export class App {
 									</div>
 								</div>
 								<div class="d-grid">
-									<button id="content-submit" class="btn btn-primary" type="submit">投稿</button>
+									<button id="content-submit" class="btn btn-primary" type="submit">${submitLabel}</button>
 								</div>
 							</form>
 						</div>
@@ -424,6 +487,10 @@ export class App {
 		const previewImg = utils.qsStrict<HTMLImageElement>("#content-thumb-preview");
 		const previewPlaceholder = utils.qsStrict<HTMLDivElement>("#content-thumb-placeholder");
 		const submitBtn = utils.qsStrict<HTMLButtonElement>("#content-submit");
+		const existingZipUrl = content?.zipUrl ?? "";
+		const existingThumbUrl = content?.thumbnailUrl ?? "";
+		titleInput.value = content?.title ?? "";
+		descInput.value = content?.description ?? "";
 		titleInput.focus();
 
 		let previewUrl: string | null = null;
@@ -434,9 +501,15 @@ export class App {
 				previewUrl = null;
 			}
 			if (!file) {
-				previewImg.style.display = "none";
-				previewImg.src = "";
-				previewPlaceholder.style.display = "block";
+				if (existingThumbUrl) {
+					previewImg.src = existingThumbUrl;
+					previewImg.style.display = "block";
+					previewPlaceholder.style.display = "none";
+				} else {
+					previewImg.style.display = "none";
+					previewImg.src = "";
+					previewPlaceholder.style.display = "block";
+				}
 				return;
 			}
 			previewUrl = URL.createObjectURL(file);
@@ -445,8 +518,11 @@ export class App {
 			previewPlaceholder.style.display = "none";
 		};
 		thumbInput.addEventListener("change", updatePreview);
+		if (existingThumbUrl) {
+			updatePreview();
+		}
 
-		const maxZipSize = 200 * 1024 * 1024;
+		const maxZipSize = 20 * 1024 * 1024;
 		const maxThumbSize = 20 * 1024 * 1024;
 		const cacheControl = "public,max-age=604800,immutable";
 		const zipMimeTypes = ["application/zip", "application/x-zip-compressed"];
@@ -498,6 +574,7 @@ export class App {
 				kind,
 				mimeType,
 				fileName: kind === "zip" ? file.name : undefined,
+				contentId: isEdit ? content?.id : undefined,
 			});
 			const maxSize = kind === "zip" ? maxZipSize : maxThumbSize;
 			const uploadResponse = await fetch(uploadInfo.data.url, {
@@ -524,46 +601,61 @@ export class App {
 				return;
 			}
 			const zipFile = zipInput.files?.[0];
-			if (!zipFile) {
+			if (!zipFile && !existingZipUrl) {
 				this.showToast("ZIPファイルを選択してください", "error");
 				return;
 			}
-			if (!isZipFile(zipFile)) {
-				this.showToast("ZIPファイル形式のみ対応しています", "error");
-				return;
-			}
-			if (zipFile.size > maxZipSize) {
-				this.showToast("ZIPファイルのサイズが大きすぎます", "error");
-				return;
+			if (zipFile) {
+				if (!isZipFile(zipFile)) {
+					this.showToast("ZIPファイル形式のみ対応しています", "error");
+					return;
+				}
+				if (zipFile.size > maxZipSize) {
+					this.showToast("ZIPファイルのサイズが大きすぎます", "error");
+					return;
+				}
 			}
 			const thumbFile = thumbInput.files?.[0];
-			if (!thumbFile) {
+			if (!thumbFile && !existingThumbUrl) {
 				this.showToast("サムネイル画像を選択してください", "error");
 				return;
 			}
-			if (!isImageFile(thumbFile)) {
-				this.showToast("サムネイル画像はPNG/JPEG/WEBPのみ対応しています", "error");
-				return;
-			}
-			if (thumbFile.size > maxThumbSize) {
-				this.showToast("サムネイル画像のサイズが大きすぎます", "error");
-				return;
+			if (thumbFile) {
+				if (!isImageFile(thumbFile)) {
+					this.showToast("サムネイル画像はPNG/JPEG/WEBPのみ対応しています", "error");
+					return;
+				}
+				if (thumbFile.size > maxThumbSize) {
+					this.showToast("サムネイル画像のサイズが大きすぎます", "error");
+					return;
+				}
 			}
 
 			submitBtn.disabled = true;
-			const submitLabel = submitBtn.textContent;
-			submitBtn.textContent = "投稿中...";
+			const submitLabelText = submitBtn.textContent;
+			submitBtn.textContent = isEdit ? "更新中..." : "投稿中...";
 			try {
-				const zipUrl = await uploadFile(zipFile, "zip");
-				const thumbnailUrl = await uploadFile(thumbFile, "thumbnail");
+				const zipUrl = zipFile ? await uploadFile(zipFile, "zip") : existingZipUrl;
+				const thumbnailUrl = thumbFile ? await uploadFile(thumbFile, "thumbnail") : existingThumbUrl;
 				const description = descInput.value.trim();
-				await createContent(this.apiClient, {
-					title,
-					description: description ? description : undefined,
-					zipUrl,
-					thumbnailUrl,
-				});
-				this.showToast("投稿しました");
+				const descriptionValue = isEdit ? description : description ? description : undefined;
+				if (isEdit && content) {
+					await updateContent(this.apiClient, content.id, {
+						title,
+						description: descriptionValue,
+						zipUrl,
+						thumbnailUrl,
+					});
+					this.showToast("更新しました");
+				} else {
+					await createContent(this.apiClient, {
+						title,
+						description: descriptionValue,
+						zipUrl,
+						thumbnailUrl,
+					});
+					this.showToast("投稿しました");
+				}
 				this.state = {
 					...this.state,
 					contents: [],
@@ -572,10 +664,13 @@ export class App {
 				};
 				utils.navigateTo("/my");
 			} catch (err) {
-				this.showToast((err as Error).message || "投稿に失敗しました", "error");
+				this.showToast(
+					(err as Error).message || (isEdit ? "更新に失敗しました" : "投稿に失敗しました"),
+					"error",
+				);
 			} finally {
 				submitBtn.disabled = false;
-				submitBtn.textContent = submitLabel || "投稿";
+				submitBtn.textContent = submitLabelText || submitLabel;
 			}
 		});
 	}
@@ -612,7 +707,9 @@ export class App {
 								const thumbnail = content.thumbnailUrl
 									? `<img class="agd-thumb-sm rounded" src="${utils.escapeHtml(content.thumbnailUrl)}" alt="${title}" />`
 									: `<div class="agd-thumb-sm rounded bg-light d-flex align-items-center justify-content-center text-secondary">-</div>`;
-								const editButton = `<button class="btn btn-sm btn-outline-secondary" type="button">編集</button>`;
+								const editButton = `<button class="btn btn-sm btn-outline-secondary js-edit-content" type="button" data-content-id="${utils.escapeHtml(
+									content.id,
+								)}">編集</button>`;
 								return `
 									<div class="card shadow-sm">
 										<div class="card-body">
@@ -677,6 +774,15 @@ export class App {
 		const editBtn = utils.qsStrict<HTMLButtonElement>("#edit-profile");
 		editBtn.addEventListener("click", () => {
 			utils.navigateTo("/my/edit");
+		});
+
+		const contentEditButtons = utils.qsStrictAll<HTMLButtonElement>(this.rootEl, ".js-edit-content");
+		contentEditButtons.forEach((button) => {
+			const contentId = button.dataset.contentId;
+			if (!contentId) return;
+			button.addEventListener("click", () => {
+				utils.navigateTo(`/contents/${encodeURIComponent(contentId)}/edit`);
+			});
 		});
 	}
 

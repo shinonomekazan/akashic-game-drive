@@ -83,6 +83,10 @@ export function parseRoute(): Route {
 	if (contentEditMatch) {
 		return { name: "content-edit", contentId: decodeURIComponent(contentEditMatch[1]) };
 	}
+	const contentViewMatch = path.match(/^\/contents\/([^/]+)\/?$/);
+	if (contentViewMatch) {
+		return { name: "content-view", contentId: decodeURIComponent(contentViewMatch[1]) };
+	}
 	if (path.startsWith("/my/contents")) {
 		return { name: "my-contents" };
 	}

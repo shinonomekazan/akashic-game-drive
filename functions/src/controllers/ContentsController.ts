@@ -37,6 +37,10 @@ interface ListMineParams {
 	authorization: string;
 }
 
+interface GetParams {
+	id: string;
+}
+
 interface UpdateParams {
 	authorization: string;
 	id: string;
@@ -92,7 +96,7 @@ export class ContentsController extends BaseController {
 	}
 
 	register(basePath: string): Router {
-		const router = super.register(basePath);
+		const router = this.app.createRouter(basePath);
 		this.registerRoute(router, "GET", "/me", this.listContents, [
 			fw.params.InstantValidator(
 				[params.headerBearerTokenValidator()],
@@ -121,6 +125,11 @@ export class ContentsController extends BaseController {
 					}) as CreateUploadUrlParams,
 			),
 		]);
+		for (const name of Object.keys(this.routingMap)) {
+			if (typeof (this as any)[name] !== "function") continue;
+			const mtr = this.routingMap[name];
+			this.registerRoute(router, mtr.method, mtr.path, (this as any)[name], this.validators[name]);
+		}
 		return router;
 	}
 
@@ -147,6 +156,13 @@ export class ContentsController extends BaseController {
 		const p = context.params as ListMineParams;
 		const verifyResult = await this.verify(p.authorization);
 		return resolvers.contents.listContents(this.app.firestore, verifyResult.uid);
+	}
+
+	async get(context: Context) {
+		const p = context.params as GetParams;
+		return {
+			content: await resolvers.contents.resolve(this.app.firestore, p.id),
+		};
 	}
 
 	async put(context: Context) {

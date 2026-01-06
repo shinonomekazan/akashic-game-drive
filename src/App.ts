@@ -14,6 +14,7 @@ import { Client } from "./api/client";
 import {
 	createContent,
 	createContentUploadUrl,
+	fetchContent,
 	listMyContents,
 	listUserContents,
 	updateContent,
@@ -55,6 +56,14 @@ export class App {
 			userPageContents: [],
 			userPageContentsLoaded: false,
 			userPageContentsLoading: false,
+			contentViewId: null,
+			contentView: null,
+			contentViewLoaded: false,
+			contentViewLoading: false,
+			contentViewOwnerId: null,
+			contentViewOwner: null,
+			contentViewOwnerLoaded: false,
+			contentViewOwnerLoading: false,
 		};
 		this.connectEmulatorIfDebug();
 	}
@@ -80,6 +89,14 @@ export class App {
 				userPageContents: [],
 				userPageContentsLoaded: false,
 				userPageContentsLoading: false,
+				contentViewId: null,
+				contentView: null,
+				contentViewLoaded: false,
+				contentViewLoading: false,
+				contentViewOwnerId: null,
+				contentViewOwner: null,
+				contentViewOwnerLoaded: false,
+				contentViewOwnerLoading: false,
 			};
 			await this.render();
 		});
@@ -117,6 +134,9 @@ export class App {
 				break;
 			case "content-edit":
 				await this.renderContentEdit();
+				break;
+			case "content-view":
+				await this.renderContentView();
 				break;
 			case "my":
 				await this.renderMy();
@@ -329,6 +349,59 @@ export class App {
 		this.renderContentCreate(content);
 	}
 
+	async renderContentView() {
+		const route = this.state.route;
+		const contentId = route.name === "content-view" ? route.contentId : "";
+		if (!contentId) {
+			utils.navigateTo("/");
+			return;
+		}
+
+		if (this.state.contentViewId !== contentId) {
+			this.state = {
+				...this.state,
+				contentViewId: contentId,
+				contentView: null,
+				contentViewLoaded: false,
+				contentViewLoading: false,
+			};
+		}
+
+		if (this.state.contentViewLoading) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			return;
+		}
+
+		if (!this.state.contentViewLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadContentView(contentId);
+			await this.render();
+			return;
+		}
+
+		if (!this.state.contentView) {
+			this.setContent('<div class="text-center text-secondary">コンテンツが見つかりません。</div>');
+			return;
+		}
+
+		const content = this.state.contentView;
+		const ownerId = content.ownerId;
+		if (this.state.contentViewOwnerId !== ownerId) {
+			this.state = {
+				...this.state,
+				contentViewOwnerId: ownerId,
+				contentViewOwner: null,
+				contentViewOwnerLoaded: false,
+				contentViewOwnerLoading: false,
+			};
+		}
+		if (!this.state.contentViewOwnerLoaded && !this.state.contentViewOwnerLoading) {
+			void this.loadContentViewOwner(ownerId);
+		}
+
+		this.renderContentDetail(content, this.state.contentViewOwner);
+	}
+
 	async loadUserProfile() {
 		const currentUser = this.state.user;
 		if (!currentUser || this.state.profileLoading) {
@@ -438,6 +511,65 @@ export class App {
 			};
 			this.showToast((err as Error).message || "コンテンツの取得に失敗しました", "error");
 		}
+	}
+
+	async loadContentView(contentId: string) {
+		if (this.state.contentViewLoading) {
+			return;
+		}
+		const cachedContent =
+			this.state.contents.find((item) => item.id === contentId) ??
+			this.state.userPageContents.find((item) => item.id === contentId);
+		if (cachedContent) {
+			this.state = {
+				...this.state,
+				contentView: cachedContent,
+				contentViewLoaded: true,
+				contentViewLoading: false,
+			};
+			return;
+		}
+		this.state = { ...this.state, contentViewLoading: true };
+		try {
+			const response = await fetchContent(this.apiClient, contentId);
+			this.state = {
+				...this.state,
+				contentView: response.data.content ?? null,
+				contentViewLoaded: true,
+				contentViewLoading: false,
+			};
+		} catch (err) {
+			this.state = {
+				...this.state,
+				contentViewLoaded: true,
+				contentViewLoading: false,
+			};
+			this.showToast((err as Error).message || "コンテンツの取得に失敗しました", "error");
+		}
+	}
+
+	async loadContentViewOwner(userId: string) {
+		if (this.state.contentViewOwnerLoading) {
+			return;
+		}
+		this.state = { ...this.state, contentViewOwnerLoading: true };
+		try {
+			const response = await fetchUserProfile(this.apiClient, userId);
+			this.state = {
+				...this.state,
+				contentViewOwner: response.data.user ?? null,
+				contentViewOwnerLoaded: true,
+				contentViewOwnerLoading: false,
+			};
+		} catch (err) {
+			this.state = {
+				...this.state,
+				contentViewOwnerLoaded: true,
+				contentViewOwnerLoading: false,
+			};
+			this.showToast((err as Error).message || "ユーザー情報の取得に失敗しました", "error");
+		}
+		await this.render();
 	}
 
 	renderMyProfile() {
@@ -782,6 +914,66 @@ export class App {
 		});
 	}
 
+	renderContentDetail(content: ContentRecord, owner: UserProfile | null) {
+		const title = utils.escapeHtml(content.title);
+		const ownerName = utils.escapeHtml(owner?.name ?? "-");
+		const ownerLink = `<a id="content-owner-link" class="text-decoration-none text-reset" href="/users/${encodeURIComponent(
+			content.ownerId,
+		)}">${ownerName}</a>`;
+		const description = utils.escapeHtml(content.description ?? "");
+		const zipLink = content.zipUrl
+			? `<a class="small d-inline-block" href="${utils.escapeHtml(
+					content.zipUrl,
+				)}" target="_blank" rel="noopener">${utils.escapeHtml(utils.getFileNameFromUrl(content.zipUrl))}</a>`
+			: '<div class="text-secondary">-</div>';
+		const thumbnail = content.thumbnailUrl
+			? `<img class="img-fluid agd-thumb" src="${utils.escapeHtml(content.thumbnailUrl)}" alt="${title}" />`
+			: '<div class="text-secondary">サムネイルがありません</div>';
+
+		this.setContent(`
+			<div class="row justify-content-center">
+				<div class="col-md-8 col-lg-6">
+					<div class="card shadow-sm">
+						<div class="card-body">
+							<div class="d-flex align-items-start justify-content-between mb-3">
+								<div>
+									<div class="agd-label">コンテンツ詳細</div>
+									<h1 class="h5 mb-0">${ownerLink}</h1>
+								</div>
+							</div>
+							<div class="d-grid gap-3">
+								<div>
+									<label class="form-label" for="content-title">コンテンツ名</label>
+									<input id="content-title" class="form-control" type="text" value="${title}" readonly />
+								</div>
+								<div>
+									<label class="form-label" for="content-description">説明</label>
+									<textarea id="content-description" class="form-control" rows="4" readonly>${description}</textarea>
+								</div>
+								<div>
+									<label class="form-label">ZIP ファイル</label>
+									${zipLink}
+								</div>
+								<div>
+									<label class="form-label">サムネプレビュー</label>
+									<div class="border rounded p-3 bg-light text-center">
+										${thumbnail}
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		`);
+
+		const ownerLinkEl = utils.qsStrict<HTMLAnchorElement>("#content-owner-link");
+		ownerLinkEl.addEventListener("click", (event) => {
+			event.preventDefault();
+			utils.navigateTo(`/users/${encodeURIComponent(content.ownerId)}`);
+		});
+	}
+
 	renderMyContent(
 		profile: UserProfile | null,
 		contents: ContentRecord[],
@@ -896,27 +1088,35 @@ export class App {
 	}
 
 	bindMyActions() {
-		const logoutBtn = utils.qsStrict<HTMLButtonElement>("#logout");
-		logoutBtn.addEventListener("click", async () => {
-			await signOutCurrentUser(this.firebase);
-			utils.navigateTo("/login");
-		});
+		const logoutBtn = utils.qs<HTMLButtonElement>("#logout");
+		if (logoutBtn) {
+			logoutBtn.addEventListener("click", async () => {
+				await signOutCurrentUser(this.firebase);
+				utils.navigateTo("/login");
+			});
+		}
 
-		const createBtn = utils.qsStrict<HTMLButtonElement>("#create-content");
-		createBtn.addEventListener("click", () => {
-			utils.navigateTo("/my/contents");
-		});
+		const createBtn = utils.qs<HTMLButtonElement>("#create-content");
+		if (createBtn) {
+			createBtn.addEventListener("click", () => {
+				utils.navigateTo("/my/contents");
+			});
+		}
 
-		const editBtn = utils.qsStrict<HTMLButtonElement>("#edit-profile");
-		editBtn.addEventListener("click", () => {
-			utils.navigateTo("/my/edit");
-		});
+		const editBtn = utils.qs<HTMLButtonElement>("#edit-profile");
+		if (editBtn) {
+			editBtn.addEventListener("click", () => {
+				utils.navigateTo("/my/edit");
+			});
+		}
 
-		const myPageLink = utils.qsStrict<HTMLAnchorElement>("#my-page-link");
-		myPageLink.addEventListener("click", (event) => {
-			event.preventDefault();
-			utils.navigateTo("/my");
-		});
+		const myPageLink = utils.qs<HTMLAnchorElement>("#my-page-link");
+		if (myPageLink) {
+			myPageLink.addEventListener("click", (event) => {
+				event.preventDefault();
+				utils.navigateTo("/my");
+			});
+		}
 
 		const contentEditButtons = utils.qsStrictAll<HTMLButtonElement>(this.rootEl, ".js-edit-content");
 		contentEditButtons.forEach((button) => {

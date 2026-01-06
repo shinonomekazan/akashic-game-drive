@@ -15,10 +15,6 @@ export interface UpdateContentInput {
 	thumbnailUrl?: string;
 }
 
-interface ApiResponse<T> {
-	data: T;
-}
-
 export interface CreateContentUploadUrlInput {
 	kind: "zip" | "thumbnail";
 	mimeType: string;
@@ -36,7 +32,7 @@ export async function createContent(client: Client, input: CreateContentInput) {
 }
 
 export async function updateContent(client: Client, contentId: string, input: UpdateContentInput) {
-	return client.callWithAuthorization<ApiResponse<{ result: string }>>(
+	return client.callWithAuthorization<{ result: string }>(
 		"PUT",
 		`/contents/${contentId}`,
 		JSON.stringify(input),
@@ -44,18 +40,18 @@ export async function updateContent(client: Client, contentId: string, input: Up
 }
 
 export async function listMyContents(client: Client) {
-	return client.callWithAuthorization<ApiResponse<{ contents: ContentRecord[] }>>("GET", "/contents/me");
+	return client.callWithAuthorization<{ contents: ContentRecord[] }>("GET", "/contents/me");
 }
 
 export async function listUserContents(client: Client, userId: string) {
-	return client.call<ApiResponse<{ contents: ContentRecord[] }>>(
+	return client.call<{ contents: ContentRecord[] }>(
 		"GET",
 		`/users/${encodeURIComponent(userId)}/contents`,
 	);
 }
 
 export async function createContentUploadUrl(client: Client, input: CreateContentUploadUrlInput) {
-	return client.callWithAuthorization<ApiResponse<CreateContentUploadUrlResult>>(
+	return client.callWithAuthorization<CreateContentUploadUrlResult>(
 		"POST",
 		"/contents/upload-url",
 		JSON.stringify(input),

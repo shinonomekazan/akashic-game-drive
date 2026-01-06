@@ -896,35 +896,27 @@ export class App {
 	}
 
 	bindMyActions() {
-		const logoutBtn = utils.qs<HTMLButtonElement>("#logout");
-		if (logoutBtn) {
-			logoutBtn.addEventListener("click", async () => {
-				await signOutCurrentUser(this.firebase);
-				utils.navigateTo("/login");
-			});
-		}
+		const logoutBtn = utils.qsStrict<HTMLButtonElement>("#logout");
+		logoutBtn.addEventListener("click", async () => {
+			await signOutCurrentUser(this.firebase);
+			utils.navigateTo("/login");
+		});
 
-		const createBtn = utils.qs<HTMLButtonElement>("#create-content");
-		if (createBtn) {
-			createBtn.addEventListener("click", () => {
-				utils.navigateTo("/my/contents");
-			});
-		}
+		const createBtn = utils.qsStrict<HTMLButtonElement>("#create-content");
+		createBtn.addEventListener("click", () => {
+			utils.navigateTo("/my/contents");
+		});
 
-		const editBtn = utils.qs<HTMLButtonElement>("#edit-profile");
-		if (editBtn) {
-			editBtn.addEventListener("click", () => {
-				utils.navigateTo("/my/edit");
-			});
-		}
+		const editBtn = utils.qsStrict<HTMLButtonElement>("#edit-profile");
+		editBtn.addEventListener("click", () => {
+			utils.navigateTo("/my/edit");
+		});
 
-		const myPageLink = utils.qs<HTMLAnchorElement>("#my-page-link");
-		if (myPageLink) {
-			myPageLink.addEventListener("click", (event) => {
-				event.preventDefault();
-				utils.navigateTo("/my");
-			});
-		}
+		const myPageLink = utils.qsStrict<HTMLAnchorElement>("#my-page-link");
+		myPageLink.addEventListener("click", (event) => {
+			event.preventDefault();
+			utils.navigateTo("/my");
+		});
 
 		const contentEditButtons = utils.qsStrictAll<HTMLButtonElement>(this.rootEl, ".js-edit-content");
 		contentEditButtons.forEach((button) => {

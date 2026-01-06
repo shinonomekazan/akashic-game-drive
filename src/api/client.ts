@@ -1,13 +1,5 @@
 import type { ApiConfig } from "../config.types";
-
-interface ApiErrorResponse {
-	meta?: {
-		status?: number;
-		errorCode?: string;
-		message?: string;
-	};
-	data?: unknown;
-}
+import * as responses from "./responses";
 
 interface ClientOptions {
 	apiConfig: ApiConfig;
@@ -17,9 +9,9 @@ interface ClientOptions {
 }
 
 export class CallApiError extends Error {
-	response?: ApiErrorResponse;
+	response: responses.BaseResponse<any>;
 
-	constructor(message: string, response?: ApiErrorResponse) {
+	constructor(message: string, response: responses.BaseResponse<any>) {
 		super(message);
 		this.response = response;
 	}
@@ -93,11 +85,11 @@ export class Client {
 		};
 	}
 
-	call<T>(method: string, path: string, body?: string): Promise<T> {
+	call<T>(method: string, path: string, body?: string): Promise<responses.BaseResponse<T>> {
 		return this.callAny(method, path, body);
 	}
 
-	async callWithAuthorization<T>(method: string, path: string, body?: string): Promise<T> {
+	async callWithAuthorization<T>(method: string, path: string, body?: string): Promise<responses.BaseResponse<T>> {
 		if (this.baseHeaders["Authorization"] == null && this.idTokenFunction == null) {
 			throw new Error("Authorization not found");
 		} else if (this.baseHeaders["Authorization"] == null && this.idTokenFunction != null) {
@@ -121,17 +113,14 @@ export class Client {
 			body,
 		});
 		if (!response.ok) {
-			let json: ApiErrorResponse | undefined;
-			let message = `Can not call ${method} ${url}: ${response.status}`;
+			let json: responses.BaseResponse<any> | undefined = undefined;
 			try {
-				json = (await response.json()) as ApiErrorResponse;
-				if (json?.meta?.message) {
-					message = json.meta.message;
-				}
+				json = (await response.json()) as responses.BaseResponse<any>;
 			} catch (error) {
-				throw new Error(`${message}, not json response.`);
+				console.log(error);
+				throw new Error(`Can not call ${method} ${url}: ${response.status}, not json response.`);
 			}
-			throw new CallApiError(message, json);
+			throw new CallApiError(`Can not call ${method} ${url}: ${response.status}`, json);
 		}
 		return (await response.json()) as T;
 	}

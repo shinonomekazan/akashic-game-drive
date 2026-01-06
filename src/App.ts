@@ -11,8 +11,14 @@ import { getUser } from "./resolvers";
 import { connectFirestoreEmulator } from "firebase/firestore";
 import { connectStorageEmulator, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Client } from "./api/client";
-import { createContent, createContentUploadUrl, listMyContents, updateContent } from "./api/contents";
-import { createUser } from "./api/users";
+import {
+	createContent,
+	createContentUploadUrl,
+	listMyContents,
+	listUserContents,
+	updateContent,
+} from "./api/contents";
+import { createUser, fetchUserProfile } from "./api/users";
 
 export class App {
 	firebase: FirebaseInstance;
@@ -42,6 +48,13 @@ export class App {
 			contents: [],
 			contentsLoaded: false,
 			contentsLoading: false,
+			userPageId: null,
+			userPageProfile: null,
+			userPageProfileLoaded: false,
+			userPageProfileLoading: false,
+			userPageContents: [],
+			userPageContentsLoaded: false,
+			userPageContentsLoading: false,
 		};
 		this.connectEmulatorIfDebug();
 	}
@@ -60,6 +73,13 @@ export class App {
 				contents: [],
 				contentsLoaded: false,
 				contentsLoading: false,
+				userPageId: null,
+				userPageProfile: null,
+				userPageProfileLoaded: false,
+				userPageProfileLoading: false,
+				userPageContents: [],
+				userPageContentsLoaded: false,
+				userPageContentsLoading: false,
 			};
 			await this.render();
 		});
@@ -100,6 +120,9 @@ export class App {
 				break;
 			case "my":
 				await this.renderMy();
+				break;
+			case "user":
+				await this.renderUserPage();
 				break;
 			case "top":
 			default:
@@ -153,6 +176,60 @@ export class App {
 		}
 
 		this.renderMyProfile();
+	}
+
+	async renderUserPage() {
+		const route = this.state.route;
+		const userId = route.name === "user" ? route.userId : "";
+		if (!userId) {
+			utils.navigateTo("/");
+			return;
+		}
+
+		if (this.state.userPageId !== userId) {
+			this.state = {
+				...this.state,
+				userPageId: userId,
+				userPageProfile: null,
+				userPageProfileLoaded: false,
+				userPageProfileLoading: false,
+				userPageContents: [],
+				userPageContentsLoaded: false,
+				userPageContentsLoading: false,
+			};
+		}
+
+		if (this.state.userPageProfileLoading || this.state.userPageContentsLoading) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			return;
+		}
+
+		if (!this.state.userPageProfileLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadUserPageProfile(userId);
+			await this.render();
+			return;
+		}
+
+		if (!this.state.userPageProfile) {
+			this.setContent('<div class="text-center text-secondary">ユーザーが見つかりません。</div>');
+			return;
+		}
+
+		if (!this.state.userPageContentsLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadUserPageContents(userId);
+			await this.render();
+			return;
+		}
+
+		const isOwnPage = this.state.user?.uid === userId;
+		this.renderMyContent(this.state.userPageProfile, this.state.userPageContents, {
+			allowEdit: false,
+			showActions: false,
+			showCreate: false,
+			nameLink: isOwnPage ? "/my" : null,
+		});
 	}
 
 	async renderMyEdit() {
@@ -297,26 +374,7 @@ export class App {
 		try {
 			const response = await listMyContents(this.apiClient);
 			const contents = response.data.contents ?? [];
-			const getMillis = (value: unknown) => {
-				if (value == null) return 0;
-				if (typeof value === "number") return value;
-				if (value instanceof Date) return value.getTime();
-				if (typeof (value as { toDate?: () => Date }).toDate === "function") {
-					return (value as { toDate: () => Date }).toDate().getTime();
-				}
-				const seconds =
-					(value as { seconds?: number; _seconds?: number }).seconds ??
-					(value as { _seconds?: number })._seconds;
-				const nanoseconds =
-					(value as { nanoseconds?: number; _nanoseconds?: number }).nanoseconds ??
-					(value as { _nanoseconds?: number })._nanoseconds ??
-					0;
-				if (typeof seconds === "number") {
-					return seconds * 1000 + Math.floor(nanoseconds / 1e6);
-				}
-				return 0;
-			};
-			contents.sort((a, b) => getMillis(b.createdAt) - getMillis(a.createdAt));
+			utils.sortContentsByCreatedAt(contents);
 			this.state = {
 				...this.state,
 				contents,
@@ -333,8 +391,57 @@ export class App {
 		}
 	}
 
+	async loadUserPageProfile(userId: string) {
+		if (this.state.userPageProfileLoading) {
+			return;
+		}
+		this.state = { ...this.state, userPageProfileLoading: true };
+		try {
+			const response = await fetchUserProfile(this.apiClient, userId);
+			const profile = response.data.user ?? null;
+			this.state = {
+				...this.state,
+				userPageProfile: profile,
+				userPageProfileLoaded: true,
+				userPageProfileLoading: false,
+			};
+		} catch (err) {
+			this.state = {
+				...this.state,
+				userPageProfileLoaded: true,
+				userPageProfileLoading: false,
+			};
+			this.showToast((err as Error).message || "ユーザー情報の取得に失敗しました", "error");
+		}
+	}
+
+	async loadUserPageContents(userId: string) {
+		if (this.state.userPageContentsLoading) {
+			return;
+		}
+		this.state = { ...this.state, userPageContentsLoading: true };
+		try {
+			const response = await listUserContents(this.apiClient, userId);
+			const contents = response.data.contents ?? [];
+			utils.sortContentsByCreatedAt(contents);
+			this.state = {
+				...this.state,
+				userPageContents: contents,
+				userPageContentsLoaded: true,
+				userPageContentsLoading: false,
+			};
+		} catch (err) {
+			this.state = {
+				...this.state,
+				userPageContentsLoaded: true,
+				userPageContentsLoading: false,
+			};
+			this.showToast((err as Error).message || "コンテンツの取得に失敗しました", "error");
+		}
+	}
+
 	renderMyProfile() {
-		this.renderMyContent(this.state.profile);
+		this.renderMyContent(this.state.profile, this.state.contents);
 	}
 
 	renderProfileSetup() {
@@ -675,9 +782,26 @@ export class App {
 		});
 	}
 
-	renderMyContent(profile: UserProfile | null) {
+	renderMyContent(
+		profile: UserProfile | null,
+		contents: ContentRecord[],
+		options: { allowEdit?: boolean; showActions?: boolean; showCreate?: boolean; nameLink?: string | null } = {},
+	) {
+		const allowEdit = options.allowEdit ?? true;
+		const showActions = options.showActions ?? true;
+		const showCreate = options.showCreate ?? true;
+		const showLogout = showActions && this.state.user !== null;
+		const showEditProfile = showActions && allowEdit;
+		const showCreateButton = showCreate && this.state.user !== null;
+		const nameLink = options.nameLink ?? null;
 		const name = profile?.name ?? "-";
 		const createdAt = utils.formatTimestamp(profile?.createdAt);
+		const safeName = utils.escapeHtml(name);
+		const nameHtml = nameLink
+			? `<a id="my-page-link" class="text-decoration-none text-reset" href="${utils.escapeHtml(
+					nameLink,
+				)}">${safeName} マイページ</a>`
+			: `${safeName} マイページ`;
 		const profileNotice = profile
 			? ""
 			: `
@@ -685,7 +809,6 @@ export class App {
 				<span>ユーザー情報が未登録です。バックエンドで作成してください。</span>
 			</div>
 		`;
-		const contents = this.state.contents;
 		const contentsHtml =
 			contents.length === 0
 				? '<div class="agd-empty">コンテンツはまだありません。</div>'
@@ -707,9 +830,11 @@ export class App {
 								const thumbnail = content.thumbnailUrl
 									? `<img class="agd-thumb-sm rounded" src="${utils.escapeHtml(content.thumbnailUrl)}" alt="${title}" />`
 									: `<div class="agd-thumb-sm rounded bg-light d-flex align-items-center justify-content-center text-secondary">-</div>`;
-								const editButton = `<button class="btn btn-sm btn-outline-secondary js-edit-content" type="button" data-content-id="${utils.escapeHtml(
-									content.id,
-								)}">編集</button>`;
+								const editButton = allowEdit
+									? `<button class="btn btn-sm btn-outline-secondary js-edit-content" type="button" data-content-id="${utils.escapeHtml(
+											content.id,
+										)}">編集</button>`
+									: "";
 								return `
 									<div class="card shadow-sm">
 										<div class="card-body">
@@ -730,22 +855,33 @@ export class App {
 							.join("")}
 					</div>
 				`;
+		const actionsHtml =
+			showEditProfile || showLogout
+				? `
+				<div class="agd-actions">
+					${showEditProfile ? '<button id="edit-profile" class="btn btn-outline-primary">編集</button>' : ""}
+					${showLogout ? '<button id="logout" class="btn btn-outline-secondary">ログアウト</button>' : ""}
+				</div>
+			`
+				: "";
+		const createButtonHtml = showCreateButton
+			? `
+			<div class="d-flex justify-content-center mb-3">
+				<button id="create-content" class="btn btn-primary">投稿</button>
+			</div>
+		`
+			: "";
 
 		this.setContent(`
 			${profileNotice}
 			<div class="agd-my-header">
 				<div>
-					<div class="agd-user-name">${utils.escapeHtml(name)} マイページ</div>
+					<div class="agd-user-name">${nameHtml}</div>
 					<div class="agd-meta">作成日: ${createdAt}</div>
 				</div>
-				<div class="agd-actions">
-					<button id="edit-profile" class="btn btn-outline-primary">編集</button>
-					<button id="logout" class="btn btn-outline-secondary">ログアウト</button>
-				</div>
+				${actionsHtml}
 			</div>
-			<div class="d-flex justify-content-center mb-3">
-				<button id="create-content" class="btn btn-primary">投稿</button>
-			</div>
+			${createButtonHtml}
 			<div class="card shadow-sm">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between mb-3">
@@ -774,6 +910,12 @@ export class App {
 		const editBtn = utils.qsStrict<HTMLButtonElement>("#edit-profile");
 		editBtn.addEventListener("click", () => {
 			utils.navigateTo("/my/edit");
+		});
+
+		const myPageLink = utils.qsStrict<HTMLAnchorElement>("#my-page-link");
+		myPageLink.addEventListener("click", (event) => {
+			event.preventDefault();
+			utils.navigateTo("/my");
 		});
 
 		const contentEditButtons = utils.qsStrictAll<HTMLButtonElement>(this.rootEl, ".js-edit-content");

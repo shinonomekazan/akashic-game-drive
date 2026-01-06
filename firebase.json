@@ -42,6 +42,10 @@
 			{
 				"source": "/contents/*/edit",
 				"destination": "/index.html"
+			},
+			{
+				"source": "/users/*",
+				"destination": "/index.html"
 			}
 		],
 		"headers": [

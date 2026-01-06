@@ -97,3 +97,21 @@ export function updateContent(
 		);
 	});
 }
+
+export function updateUser(firestore: Firestore, user: Omit<UserProfile, "createdAt" | "updatedAt">) {
+	return firestore.runTransaction(async (transaction) => {
+		const userDoc = firestore.collection("users").doc(user.uid);
+		const snapshot = await transaction.get(userDoc);
+		if (!snapshot.exists) {
+			throw new fw.types.NotFound(`User with id ${user.uid} not found`);
+		}
+		transaction.update(
+			userDoc,
+			eraseUndefined({
+				name: user.name,
+				photoURL: user.photoURL,
+				updatedAt: Timestamp.now(),
+			}),
+		);
+	});
+}

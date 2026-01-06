@@ -47,6 +47,13 @@ export async function listMyContents(client: Client) {
 	return client.callWithAuthorization<ApiResponse<{ contents: ContentRecord[] }>>("GET", "/contents/me");
 }
 
+export async function listUserContents(client: Client, userId: string) {
+	return client.call<ApiResponse<{ contents: ContentRecord[] }>>(
+		"GET",
+		`/users/${encodeURIComponent(userId)}/contents`,
+	);
+}
+
 export async function createContentUploadUrl(client: Client, input: CreateContentUploadUrlInput) {
 	return client.callWithAuthorization<ApiResponse<CreateContentUploadUrlResult>>(
 		"POST",

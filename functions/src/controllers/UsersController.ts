@@ -6,8 +6,7 @@ import * as fw from "../fw";
 import * as params from "../params";
 import { Router } from "express";
 import * as resolvers from "../resolvers";
-import { Timestamp } from "@google-cloud/firestore";
-import { storeUser } from "../stores";
+import { storeUser, updateUser } from "../stores";
 
 interface RegisterParams {
 	name: string;
@@ -18,6 +17,14 @@ interface UpdateParams {
 	authorization: string;
 	id: "me" | string;
 	name: string;
+}
+
+interface GetParams {
+	id: string;
+}
+
+interface ListContentsParams {
+	id: string;
 }
 
 export class UsersController extends BaseController {
@@ -51,7 +58,16 @@ export class UsersController extends BaseController {
 	}
 
 	register(basePath: string): Router {
-		return super.register(basePath);
+		const router = super.register(basePath);
+		this.registerRoute(router, "GET", "/:id/contents", this.listContents, [new fw.params.StringIdValidator()]);
+		return router;
+	}
+
+	async get(context: Context) {
+		const p = context.params as GetParams;
+		return {
+			user: await resolvers.users.resolve(this.app.firestore, p.id),
+		};
 	}
 
 	async post(context: Context) {
@@ -72,15 +88,25 @@ export class UsersController extends BaseController {
 			throw new fw.types.BadRequest("不正なリクエストです");
 		}
 		const verifyResult = await this.verify(p.authorization);
-		await this.app.firestore.collection("users").doc(verifyResult.uid).set(
+		const result = await resolvers.users.resolve(this.app.firestore, verifyResult.uid);
+		if (result === null) {
+			throw new fw.types.NotFound("ユーザーが見つかりません");
+		}
+		await updateUser(
+			this.app.firestore,
 			{
+				uid: verifyResult.uid,
 				name: p.name,
-				updatedAt: Timestamp.now(),
 			},
-			{ merge: true },
+			verifyResult.uid,
 		);
 		return {
 			result: "ok",
 		};
+	}
+
+	async listContents(context: Context) {
+		const p = context.params as ListContentsParams;
+		return resolvers.contents.listContents(this.app.firestore, p.id);
 	}
 }

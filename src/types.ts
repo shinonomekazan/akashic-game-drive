@@ -26,7 +26,8 @@ export type Route =
 	| { name: "my" }
 	| { name: "my-edit" }
 	| { name: "my-contents" }
-	| { name: "content-edit"; contentId: string };
+	| { name: "content-edit"; contentId: string }
+	| { name: "user"; userId: string };
 
 export interface AppState {
 	route: Route;
@@ -39,4 +40,11 @@ export interface AppState {
 	contents: ContentRecord[];
 	contentsLoaded: boolean;
 	contentsLoading: boolean;
+	userPageId: string | null;
+	userPageProfile: UserProfile | null;
+	userPageProfileLoaded: boolean;
+	userPageProfileLoading: boolean;
+	userPageContents: ContentRecord[];
+	userPageContentsLoaded: boolean;
+	userPageContentsLoading: boolean;
 }

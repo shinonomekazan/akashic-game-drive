@@ -1,4 +1,4 @@
-import { Route } from "./types";
+import { ContentRecord, Route } from "./types";
 
 export function qs<T extends HTMLElement>(selector: string, element: HTMLElement | Document = document): T | null {
 	return element.querySelector<T>(selector);
@@ -75,6 +75,10 @@ export function parseRoute(): Route {
 	if (path.startsWith("/login")) {
 		return { name: "login" };
 	}
+	const userMatch = path.match(/^\/users\/([^/]+)\/?$/);
+	if (userMatch) {
+		return { name: "user", userId: decodeURIComponent(userMatch[1]) };
+	}
 	const contentEditMatch = path.match(/^\/contents\/([^/]+)\/edit\/?$/);
 	if (contentEditMatch) {
 		return { name: "content-edit", contentId: decodeURIComponent(contentEditMatch[1]) };
@@ -91,25 +95,36 @@ export function parseRoute(): Route {
 	return { name: "top" };
 }
 
+export function resolveTimestampDate(value: unknown) {
+	if (!value) return null;
+	if (value instanceof Date) return value;
+	if (typeof value === "number") return new Date(value);
+	if (typeof (value as { toDate?: () => Date }).toDate === "function") {
+		return (value as { toDate: () => Date }).toDate();
+	}
+	const seconds =
+		(value as { seconds?: number; _seconds?: number }).seconds ?? (value as { _seconds?: number })._seconds;
+	const nanoseconds =
+		(value as { nanoseconds?: number; _nanoseconds?: number }).nanoseconds ??
+		(value as { _nanoseconds?: number })._nanoseconds ??
+		0;
+	if (typeof seconds === "number") {
+		return new Date(seconds * 1000 + Math.floor(nanoseconds / 1e6));
+	}
+	return null;
+}
+
+export function getTimestampMillis(value: unknown) {
+	const date = resolveTimestampDate(value);
+	return date ? date.getTime() : 0;
+}
+
+export function sortContentsByCreatedAt<T extends { createdAt?: unknown }>(contents: T[]) {
+	contents.sort((a, b) => getTimestampMillis(b.createdAt) - getTimestampMillis(a.createdAt));
+}
+
 export function formatTimestamp(value: unknown) {
-	const date = (() => {
-		if (!value) return null;
-		if (value instanceof Date) return value;
-		if (typeof value === "number") return new Date(value);
-		if (typeof (value as { toDate?: () => Date }).toDate === "function") {
-			return (value as { toDate: () => Date }).toDate();
-		}
-		const seconds =
-			(value as { seconds?: number; _seconds?: number }).seconds ?? (value as { _seconds?: number })._seconds;
-		const nanoseconds =
-			(value as { nanoseconds?: number; _nanoseconds?: number }).nanoseconds ??
-			(value as { _nanoseconds?: number })._nanoseconds ??
-			0;
-		if (typeof seconds === "number") {
-			return new Date(seconds * 1000 + Math.floor(nanoseconds / 1e6));
-		}
-		return null;
-	})();
+	const date = resolveTimestampDate(value);
 	if (!date) return "-";
 	const pad2 = (num: number) => num.toString().padStart(2, "0");
 	const jstOffsetMs = 9 * 60 * 60 * 1000;

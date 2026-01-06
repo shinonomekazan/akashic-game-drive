@@ -28,15 +28,11 @@ export interface CreateContentUploadUrlResult {
 }
 
 export async function createContent(client: Client, input: CreateContentInput) {
-	return client.callWithAuthorization<{ content: ContentRecord }>("POST", "/contents", JSON.stringify(input));
+	return client.callWithAuthorization<{ result: string }>("POST", "/contents", JSON.stringify(input));
 }
 
 export async function updateContent(client: Client, contentId: string, input: UpdateContentInput) {
-	return client.callWithAuthorization<{ result: string }>(
-		"PUT",
-		`/contents/${contentId}`,
-		JSON.stringify(input),
-	);
+	return client.callWithAuthorization<{ result: string }>("PUT", `/contents/${contentId}`, JSON.stringify(input));
 }
 
 export async function listMyContents(client: Client) {
@@ -44,10 +40,7 @@ export async function listMyContents(client: Client) {
 }
 
 export async function listUserContents(client: Client, userId: string) {
-	return client.call<{ contents: ContentRecord[] }>(
-		"GET",
-		`/users/${encodeURIComponent(userId)}/contents`,
-	);
+	return client.call<{ contents: ContentRecord[] }>("GET", `/users/${encodeURIComponent(userId)}/contents`);
 }
 
 export async function createContentUploadUrl(client: Client, input: CreateContentUploadUrlInput) {

@@ -114,7 +114,6 @@ export class Client {
 		});
 		if (!response.ok) {
 			let json: responses.BaseResponse<any> | undefined = undefined;
-			let message = `Can not call ${method} ${url}: ${response.status}`;
 			try {
 				json = (await response.json()) as responses.BaseResponse<any>;
 			} catch (error) {

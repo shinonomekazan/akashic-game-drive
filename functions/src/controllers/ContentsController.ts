@@ -33,7 +33,7 @@ interface CreateUploadUrlParams {
 	contentId?: string;
 }
 
-interface ListMineParams {
+interface ListContentParams {
 	authorization: string;
 }
 
@@ -53,6 +53,15 @@ interface UpdateParams {
 export class ContentsController extends BaseController {
 	constructor(app: App) {
 		super(app);
+		this.validators.me = [
+			fw.params.InstantValidator(
+				[params.headerBearerTokenValidator()],
+				(context) =>
+					({
+						authorization: context.req.headers.authorization,
+					}) as ListContentParams,
+			),
+		];
 		this.validators.post = [
 			fw.params.InstantValidator(
 				[
@@ -72,6 +81,7 @@ export class ContentsController extends BaseController {
 					}) as CreateParams,
 			),
 		];
+
 		this.validators.put = [
 			fw.params.InstantValidator(
 				[
@@ -96,16 +106,19 @@ export class ContentsController extends BaseController {
 	}
 
 	register(basePath: string): Router {
-		const router = this.app.createRouter(basePath);
-		this.registerRoute(router, "GET", "/me", this.listContents, [
+		const router = super.register(basePath);
+		this.registerRoute(router, "GET", "/listContent", this.listContent, [
 			fw.params.InstantValidator(
 				[params.headerBearerTokenValidator()],
 				(context) =>
 					({
 						authorization: context.req.headers.authorization,
-					}) as ListMineParams,
+					}) as ListContentParams,
 			),
 		]);
+
+		this.registerRoute(router, "GET", "/:id", this.getContent, [new fw.params.StringIdValidator()]);
+
 		this.registerRoute(router, "POST", "/upload-url", this.createUploadUrl, [
 			fw.params.InstantValidator(
 				[
@@ -125,11 +138,6 @@ export class ContentsController extends BaseController {
 					}) as CreateUploadUrlParams,
 			),
 		]);
-		for (const name of Object.keys(this.routingMap)) {
-			if (typeof (this as any)[name] !== "function") continue;
-			const mtr = this.routingMap[name];
-			this.registerRoute(router, mtr.method, mtr.path, (this as any)[name], this.validators[name]);
-		}
 		return router;
 	}
 
@@ -152,13 +160,13 @@ export class ContentsController extends BaseController {
 		};
 	}
 
-	async listContents(context: Context) {
-		const p = context.params as ListMineParams;
+	async listContent(context: Context) {
+		const p = context.params as ListContentParams;
 		const verifyResult = await this.verify(p.authorization);
 		return resolvers.contents.listContents(this.app.firestore, verifyResult.uid);
 	}
 
-	async get(context: Context) {
+	async getContent(context: Context) {
 		const p = context.params as GetParams;
 		return {
 			content: await resolvers.contents.resolve(this.app.firestore, p.id),
@@ -246,7 +254,7 @@ export class ContentsController extends BaseController {
 		};
 	}
 
-	private async ensureContentLimit(userId: string) {
+	async ensureContentLimit(userId: string) {
 		const snapshot = await this.app.firestore
 			.collection("contents")
 			.where("ownerId", "==", userId)

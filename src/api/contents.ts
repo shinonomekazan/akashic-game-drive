@@ -36,7 +36,7 @@ export async function updateContent(client: Client, contentId: string, input: Up
 }
 
 export async function listMyContents(client: Client) {
-	return client.callWithAuthorization<{ contents: ContentRecord[] }>("GET", "/contents/me");
+	return client.callWithAuthorization<{ contents: ContentRecord[] }>("GET", "/contents/listContent");
 }
 
 export async function listUserContents(client: Client, userId: string) {

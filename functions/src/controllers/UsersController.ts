@@ -92,14 +92,10 @@ export class UsersController extends BaseController {
 		if (result === null) {
 			throw new fw.types.NotFound("ユーザーが見つかりません");
 		}
-		await updateUser(
-			this.app.firestore,
-			{
-				uid: verifyResult.uid,
-				name: p.name,
-			},
-			verifyResult.uid,
-		);
+		await updateUser(this.app.firestore, {
+			uid: verifyResult.uid,
+			name: p.name,
+		});
 		return {
 			result: "ok",
 		};

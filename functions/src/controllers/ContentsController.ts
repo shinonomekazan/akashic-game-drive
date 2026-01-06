@@ -53,15 +53,6 @@ interface UpdateParams {
 export class ContentsController extends BaseController {
 	constructor(app: App) {
 		super(app);
-		this.validators.me = [
-			fw.params.InstantValidator(
-				[params.headerBearerTokenValidator()],
-				(context) =>
-					({
-						authorization: context.req.headers.authorization,
-					}) as ListContentParams,
-			),
-		];
 		this.validators.post = [
 			fw.params.InstantValidator(
 				[

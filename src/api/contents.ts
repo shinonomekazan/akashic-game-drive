@@ -39,11 +39,7 @@ export async function listMyContents(client: Client) {
 	return client.callWithAuthorization<{ contents: ContentRecord[] }>("GET", "/contents/listContent");
 }
 
-export async function listUserContents(client: Client, userId: string) {
-	return client.call<{ contents: ContentRecord[] }>("GET", `/users/${encodeURIComponent(userId)}/contents`);
-}
-
-export async function fetchContent(client: Client, contentId: string) {
+export async function getContentById(client: Client, contentId: string) {
 	return client.call<{ content: ContentRecord | null }>("GET", `/contents/${encodeURIComponent(contentId)}`);
 }
 

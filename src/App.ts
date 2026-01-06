@@ -11,15 +11,8 @@ import { getUser } from "./resolvers";
 import { connectFirestoreEmulator } from "firebase/firestore";
 import { connectStorageEmulator, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Client } from "./api/client";
-import {
-	createContent,
-	createContentUploadUrl,
-	fetchContent,
-	listMyContents,
-	listUserContents,
-	updateContent,
-} from "./api/contents";
-import { createUser, fetchUserProfile } from "./api/users";
+import { createContent, createContentUploadUrl, getContentById, listMyContents, updateContent } from "./api/contents";
+import { createUser, getUserById, listUserContents } from "./api/users";
 
 export class App {
 	firebase: FirebaseInstance;
@@ -470,7 +463,7 @@ export class App {
 		}
 		this.state = { ...this.state, userPageProfileLoading: true };
 		try {
-			const response = await fetchUserProfile(this.apiClient, userId);
+			const response = await getUserById(this.apiClient, userId);
 			const profile = response.data.user ?? null;
 			this.state = {
 				...this.state,
@@ -531,7 +524,7 @@ export class App {
 		}
 		this.state = { ...this.state, contentViewLoading: true };
 		try {
-			const response = await fetchContent(this.apiClient, contentId);
+			const response = await getContentById(this.apiClient, contentId);
 			this.state = {
 				...this.state,
 				contentView: response.data.content ?? null,
@@ -554,7 +547,7 @@ export class App {
 		}
 		this.state = { ...this.state, contentViewOwnerLoading: true };
 		try {
-			const response = await fetchUserProfile(this.apiClient, userId);
+			const response = await getUserById(this.apiClient, userId);
 			this.state = {
 				...this.state,
 				contentViewOwner: response.data.user ?? null,

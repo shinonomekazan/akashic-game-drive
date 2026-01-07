@@ -979,6 +979,7 @@ export class App {
 		const showEditProfile = showActions && allowEdit;
 		const showCreateButton = showCreate && this.state.user !== null;
 		const nameLink = options.nameLink ?? null;
+		const currentUserId = profile?.uid ?? this.state.user?.uid ?? "";
 		const name = profile?.name ?? "-";
 		const createdAt = utils.formatTimestamp(profile?.createdAt);
 		const safeName = utils.escapeHtml(name);
@@ -1005,6 +1006,10 @@ export class App {
 								const description = content.description
 									? `<div class="text-secondary small mt-1">${utils.escapeHtml(content.description)}</div>`
 									: "";
+								const contentLink = `/contents/${encodeURIComponent(content.id)}`;
+								const titleLink = `<a class="text-decoration-none text-reset js-content-link" href="${utils.escapeHtml(
+									contentLink,
+								)}" data-content-id="${utils.escapeHtml(content.id)}">${title}</a>`;
 								const zipName = content.zipUrl ? utils.getFileNameFromUrl(content.zipUrl) : "";
 								const zipLink = content.zipUrl
 									? `<a class="small mt-2 d-inline-block" href="${utils.escapeHtml(
@@ -1015,6 +1020,9 @@ export class App {
 								const thumbnail = content.thumbnailUrl
 									? `<img class="agd-thumb-sm rounded" src="${utils.escapeHtml(content.thumbnailUrl)}" alt="${title}" />`
 									: `<div class="agd-thumb-sm rounded bg-light d-flex align-items-center justify-content-center text-secondary">-</div>`;
+								const thumbLink = `<a class="js-content-link" href="${utils.escapeHtml(
+									contentLink,
+								)}" data-content-id="${utils.escapeHtml(content.id)}">${thumbnail}</a>`;
 								const editButton = allowEdit
 									? `<button class="btn btn-sm btn-outline-secondary js-edit-content" type="button" data-content-id="${utils.escapeHtml(
 											content.id,
@@ -1024,9 +1032,9 @@ export class App {
 									<div class="card shadow-sm">
 										<div class="card-body">
 											<div class="d-flex gap-3 align-items-start">
-												${thumbnail}
+												${thumbLink}
 												<div class="flex-grow-1">
-													<div class="fw-semibold">${title}</div>
+													<div class="fw-semibold">${titleLink}</div>
 													<div class="text-secondary small">作成日: ${contentCreatedAt}</div>
 													${description}
 													${zipLink}
@@ -1049,10 +1057,17 @@ export class App {
 				</div>
 			`
 				: "";
+		const viewProfileHref = currentUserId ? `/users/${encodeURIComponent(currentUserId)}` : "";
+		const viewProfileButtonHtml = viewProfileHref
+			? `<a id="view-profile" class="btn btn-outline-secondary" href="${utils.escapeHtml(
+					viewProfileHref,
+				)}">プロフィール表示確認</a>`
+			: "";
 		const createButtonHtml = showCreateButton
 			? `
-			<div class="d-flex justify-content-center mb-3">
+			<div class="d-flex justify-content-center gap-2 mb-3">
 				<button id="create-content" class="btn btn-primary">投稿</button>
+				${viewProfileButtonHtml}
 			</div>
 		`
 			: "";
@@ -1103,6 +1118,16 @@ export class App {
 			});
 		}
 
+		const viewProfileBtn = utils.qs<HTMLAnchorElement>("#view-profile");
+		if (viewProfileBtn) {
+			viewProfileBtn.addEventListener("click", (event) => {
+				event.preventDefault();
+				const userId = this.state.profile?.uid ?? this.state.user?.uid;
+				if (!userId) return;
+				utils.navigateTo(`/users/${encodeURIComponent(userId)}`);
+			});
+		}
+
 		const myPageLink = utils.qs<HTMLAnchorElement>("#my-page-link");
 		if (myPageLink) {
 			myPageLink.addEventListener("click", (event) => {
@@ -1117,6 +1142,16 @@ export class App {
 			if (!contentId) return;
 			button.addEventListener("click", () => {
 				utils.navigateTo(`/contents/${encodeURIComponent(contentId)}/edit`);
+			});
+		});
+
+		const contentLinks = utils.qsStrictAll<HTMLAnchorElement>(this.rootEl, ".js-content-link");
+		contentLinks.forEach((link) => {
+			const contentId = link.dataset.contentId;
+			if (!contentId) return;
+			link.addEventListener("click", (event) => {
+				event.preventDefault();
+				utils.navigateTo(`/contents/${encodeURIComponent(contentId)}`);
 			});
 		});
 	}

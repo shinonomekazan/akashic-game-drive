@@ -36,11 +36,11 @@ export async function updateContent(client: Client, contentId: string, input: Up
 }
 
 export async function listMyContents(client: Client) {
-	return client.callWithAuthorization<{ contents: ContentRecord[] }>("GET", "/contents/me");
+	return client.callWithAuthorization<{ contents: ContentRecord[] }>("GET", "/contents/listContent");
 }
 
-export async function listUserContents(client: Client, userId: string) {
-	return client.call<{ contents: ContentRecord[] }>("GET", `/users/${encodeURIComponent(userId)}/contents`);
+export async function getContentById(client: Client, contentId: string) {
+	return client.call<{ content: ContentRecord | null }>("GET", `/contents/${encodeURIComponent(contentId)}`);
 }
 
 export async function createContentUploadUrl(client: Client, input: CreateContentUploadUrlInput) {

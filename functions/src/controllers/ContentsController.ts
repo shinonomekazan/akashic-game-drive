@@ -33,8 +33,12 @@ interface CreateUploadUrlParams {
 	contentId?: string;
 }
 
-interface ListMineParams {
+interface ListContentParams {
 	authorization: string;
+}
+
+interface GetParams {
+	id: string;
 }
 
 interface UpdateParams {
@@ -68,6 +72,7 @@ export class ContentsController extends BaseController {
 					}) as CreateParams,
 			),
 		];
+
 		this.validators.put = [
 			fw.params.InstantValidator(
 				[
@@ -93,15 +98,18 @@ export class ContentsController extends BaseController {
 
 	register(basePath: string): Router {
 		const router = super.register(basePath);
-		this.registerRoute(router, "GET", "/me", this.listContents, [
+		this.registerRoute(router, "GET", "/listContent", this.listContent, [
 			fw.params.InstantValidator(
 				[params.headerBearerTokenValidator()],
 				(context) =>
 					({
 						authorization: context.req.headers.authorization,
-					}) as ListMineParams,
+					}) as ListContentParams,
 			),
 		]);
+
+		this.registerRoute(router, "GET", "/:id", this.getContent, [new fw.params.StringIdValidator()]);
+
 		this.registerRoute(router, "POST", "/upload-url", this.createUploadUrl, [
 			fw.params.InstantValidator(
 				[
@@ -143,10 +151,17 @@ export class ContentsController extends BaseController {
 		};
 	}
 
-	async listContents(context: Context) {
-		const p = context.params as ListMineParams;
+	async listContent(context: Context) {
+		const p = context.params as ListContentParams;
 		const verifyResult = await this.verify(p.authorization);
 		return resolvers.contents.listContents(this.app.firestore, verifyResult.uid);
+	}
+
+	async getContent(context: Context) {
+		const p = context.params as GetParams;
+		return {
+			content: await resolvers.contents.resolve(this.app.firestore, p.id),
+		};
 	}
 
 	async put(context: Context) {
@@ -230,7 +245,7 @@ export class ContentsController extends BaseController {
 		};
 	}
 
-	private async ensureContentLimit(userId: string) {
+	async ensureContentLimit(userId: string) {
 		const snapshot = await this.app.firestore
 			.collection("contents")
 			.where("ownerId", "==", userId)

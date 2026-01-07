@@ -40,6 +40,7 @@ export class UsersController extends BaseController {
 					}) as RegisterParams,
 			),
 		];
+
 		this.validators.put = [
 			fw.params.InstantValidator(
 				[
@@ -59,7 +60,7 @@ export class UsersController extends BaseController {
 
 	register(basePath: string): Router {
 		const router = super.register(basePath);
-		this.registerRoute(router, "GET", "/:id/contents", this.listContents, [new fw.params.StringIdValidator()]);
+		this.registerRoute(router, "GET", "/:id/contents", this.listUserContents, [new fw.params.StringIdValidator()]);
 		return router;
 	}
 
@@ -101,7 +102,7 @@ export class UsersController extends BaseController {
 		};
 	}
 
-	async listContents(context: Context) {
+	async listUserContents(context: Context) {
 		const p = context.params as ListContentsParams;
 		return resolvers.contents.listContents(this.app.firestore, p.id);
 	}

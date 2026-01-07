@@ -691,7 +691,7 @@ export class App {
 								</div>
 								<div>
 									<label class="form-label">サムネプレビュー</label>
-									<div class="border rounded p-3 bg-light text-center">
+									<div class="d-flex justify-content-center border rounded p-3 bg-light text-center">
 										<img id="content-thumb-preview" class="img-fluid agd-thumb" alt="サムネプレビュー" style="display: none;" />
 										<div id="content-thumb-placeholder" class="text-secondary">サムネプレビュー</div>
 									</div>
@@ -913,47 +913,33 @@ export class App {
 		const ownerLink = `<a id="content-owner-link" class="text-decoration-none text-reset" href="/users/${encodeURIComponent(
 			content.ownerId,
 		)}">${ownerName}</a>`;
-		const description = utils.escapeHtml(content.description ?? "");
-		const zipLink = content.zipUrl
-			? `<a class="small d-inline-block" href="${utils.escapeHtml(
-					content.zipUrl,
-				)}" target="_blank" rel="noopener">${utils.escapeHtml(utils.getFileNameFromUrl(content.zipUrl))}</a>`
-			: '<div class="text-secondary">-</div>';
+		const descriptionText = content.description?.trim() ?? "";
+		const description = utils.escapeHtml(descriptionText);
+		const descriptionHtml = description
+			? `<div class="agd-description text-start">${description}</div>`
+			: '<div class="text-secondary">説明はありません</div>';
 		const thumbnail = content.thumbnailUrl
 			? `<img class="img-fluid agd-thumb" src="${utils.escapeHtml(content.thumbnailUrl)}" alt="${title}" />`
 			: '<div class="text-secondary">サムネイルがありません</div>';
+		const createdAt = utils.formatTimestamp(content.createdAt);
+		const updatedAt = utils.formatTimestamp(content.updatedAt);
+		const metaLine = `${ownerLink} が ${createdAt} に投稿 (最終更新: ${updatedAt})`;
 
 		this.setContent(`
 			<div class="row justify-content-center">
 				<div class="col-md-8 col-lg-6">
 					<div class="card shadow-sm">
 						<div class="card-body">
-							<div class="d-flex align-items-start justify-content-between mb-3">
+							<div class="d-flex align-items-start justify-content-between mb-4">
 								<div>
-									<div class="agd-label">コンテンツ詳細</div>
-									<h1 class="h5 mb-0">${ownerLink}</h1>
+									<h1 class="h4 mb-1">${title}</h1>
+									<div class="agd-meta">${metaLine}</div>
 								</div>
 							</div>
-							<div class="d-grid gap-3">
-								<div>
-									<label class="form-label" for="content-title">コンテンツ名</label>
-									<input id="content-title" class="form-control" type="text" value="${title}" readonly />
-								</div>
-								<div>
-									<label class="form-label" for="content-description">説明</label>
-									<textarea id="content-description" class="form-control" rows="4" readonly>${description}</textarea>
-								</div>
-								<div>
-									<label class="form-label">ZIP ファイル</label>
-									${zipLink}
-								</div>
-								<div>
-									<label class="form-label">サムネプレビュー</label>
-									<div class="border rounded p-3 bg-light text-center">
-										${thumbnail}
-									</div>
-								</div>
+							<div class="d-flex justify-content-center mb-4">
+								${thumbnail}
 							</div>
+							${descriptionHtml}
 						</div>
 					</div>
 				</div>
@@ -1077,7 +1063,7 @@ export class App {
 			<div class="agd-my-header">
 				<div>
 					<div class="agd-user-name">${nameHtml}</div>
-					<div class="agd-meta">作成日: ${createdAt}</div>
+					<div class="agd-meta">登録日: ${createdAt}</div>
 				</div>
 				${actionsHtml}
 			</div>

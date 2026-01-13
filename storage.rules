@@ -1,14 +1,33 @@
+rules_version = '2';
 
 service firebase.storage {
 	match /b/{bucket}/o {
+		function isAdmin() {
+			return request.auth != null && request.auth.token.role == "admin";
+		}
+
+		function isContentDownloadAllowed(contentId) {
+			let doc = get(/databases/(default)/documents/contents/$(contentId));
+			return doc.data != null && doc.data.state == "ok" && doc.data.trusted != false;
+		}
+
 		match /{allPaths=**} {
 			allow read, write: if false;
 		}
 		match /uploads/{userId}/{allPaths=**} {
-			allow read: if true;
+			allow read: if false;
 			allow write: if request.auth != null
 				&& request.auth.uid == userId
 				&& (request.resource == null || request.resource.size <= 20 * 1024 * 1024);
+		}
+		match /uploads/{userId}/contents/thumbnail/{contentId}/{fileName} {
+			allow read: if true;
+		}
+		match /uploads/{userId}/contents/zip/{contentId}/{zipName} {
+			allow read: if isAdmin() && zipName.matches(".*\\.zip");
+		}
+		match /uploads/{userId}/contents/zip/{contentId}/{zipName}/{path=**} {
+			allow read: if isContentDownloadAllowed(contentId);
 		}
 	}
 }

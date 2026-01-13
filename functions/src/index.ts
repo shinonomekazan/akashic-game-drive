@@ -1,11 +1,13 @@
 import { initializeApp, applicationDefault, getApps, getApp } from "firebase-admin/app";
 import { onRequest, Request } from "firebase-functions/v2/https";
+import { onObjectFinalized } from "firebase-functions/v2/storage";
 import { Response } from "express";
 import * as path from "path";
 import { App } from "./App";
 import { AppConfig, Config } from "./config";
 import * as fw from "./fw";
 import { register } from "./register";
+import { handleStorageZipFinalize } from "./zipValidation";
 
 let app: App | undefined = undefined;
 const apiKey = process.env.API_KEY;
@@ -51,3 +53,5 @@ export const api = onRequest({ region: "asia-northeast1" }, (request, response) 
 		return processRequest(app, apiKey, request, response);
 	}
 });
+
+export const onZipUploaded = onObjectFinalized({ region: "asia-northeast1" }, handleStorageZipFinalize);

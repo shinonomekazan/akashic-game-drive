@@ -13,8 +13,7 @@ const WARNING_NETWORK_ACCESS = "ネットワークアクセスが検知されま
 const WARNING_MATH_RANDOM = "Math.randomの利用があります";
 const WARNING_DATE = "Dateの利用があります";
 const CODE_EXTENSIONS = new Set([".js", ".mjs", ".cjs", ".ts", ".tsx"]);
-const EXTRACTION_CONCURRENCY = 5;
-const DELETE_ZIP_AFTER_EXTRACT = true;
+const EXTRACTION_CONCURRENCY = 10;
 
 interface ZipEntry {
 	entryName: string;
@@ -278,15 +277,13 @@ async function processZipFile(bucketName: string, objectName: string, contentRef
 		let deletedZip = false;
 		if (result.state === "ok") {
 			await extractZipEntries(entries, bucket, extractPrefix);
-			if (DELETE_ZIP_AFTER_EXTRACT) {
-				try {
-					await file.delete();
+			try {
+				await file.delete();
+				deletedZip = true;
+			} catch (error) {
+				const code = (error as { code?: number }).code;
+				if (code === 404) {
 					deletedZip = true;
-				} catch (error) {
-					const code = (error as { code?: number }).code;
-					if (code === 404) {
-						deletedZip = true;
-					}
 				}
 			}
 		}

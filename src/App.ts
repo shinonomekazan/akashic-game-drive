@@ -10,7 +10,6 @@ import * as utils from "./utils";
 import { getUser } from "./resolvers";
 import { connectFirestoreEmulator } from "firebase/firestore";
 import { connectStorageEmulator, getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { loadContentFiles } from "./downloader";
 import { Client } from "./api/client";
 import type { UpdateContentInput } from "./api/contents";
 import { createContent, createContentUploadUrl, getContentById, listMyContents, updateContent } from "./api/contents";
@@ -958,7 +957,6 @@ export class App {
 		const descriptionHtml = description
 			? `<div class="agd-description text-start">${description}</div>`
 			: '<div class="text-secondary">説明はありません</div>';
-		const extractedPath = content.extractedPath;
 		const warningLines = content.state === "failed" ? (content.warnings ?? []).filter(Boolean) : [];
 		const archiveInfo =
 			content.state === "failed"
@@ -974,14 +972,6 @@ export class App {
 		const createdAt = utils.formatTimestamp(content.createdAt);
 		const updatedAt = utils.formatTimestamp(content.updatedAt);
 		const metaLine = `${ownerLink} が ${createdAt} に投稿 (最終更新: ${updatedAt})`;
-		const canDownload = content.state === "ok" && content.trusted !== false && Boolean(content.extractedPath);
-		const downloadHtml = canDownload
-			? `<div class="mt-4">
-					<div class="fw-semibold mb-2">ダウンロード</div>
-					<div id="content-files" class="small text-secondary">読み込み中...</div>
-				</div>`
-			: "";
-
 		this.setContent(`
 			<div class="row justify-content-center">
 				<div class="col-md-8 col-lg-6">
@@ -998,7 +988,6 @@ export class App {
 							</div>
 							${descriptionHtml}
 							${archiveInfo}
-							${downloadHtml}
 						</div>
 					</div>
 				</div>
@@ -1010,22 +999,6 @@ export class App {
 			event.preventDefault();
 			utils.navigateTo(`/users/${encodeURIComponent(content.ownerId)}`);
 		});
-		if (canDownload) {
-			const container = utils.qs<HTMLElement>("#content-files");
-			if (container) {
-				void loadContentFiles({
-					content,
-					storage: this.firebase.storage,
-					container,
-					isDebugMode: utils.isDebugMode(),
-					messages: {
-						unavailable: "ダウンロードできません",
-						gameJsonFailed: "game.jsonの取得に失敗しました",
-						listFailed: "ファイル一覧の取得に失敗しました",
-					},
-				});
-			}
-		}
 	}
 
 	renderMyContent(

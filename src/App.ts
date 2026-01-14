@@ -14,6 +14,7 @@ import { Client } from "./api/client";
 import type { UpdateContentInput } from "./api/contents";
 import { createContent, createContentUploadUrl, getContentById, listMyContents, updateContent } from "./api/contents";
 import { createUser, getUserById, listUserContents } from "./api/users";
+import { loadContentFiles } from "./downloader";
 
 export class App {
 	firebase: FirebaseInstance;
@@ -642,32 +643,17 @@ export class App {
 		const title = isEdit ? `${profileName} のコンテンツ編集` : `${profileName} のコンテンツ投稿`;
 		const submitLabel = isEdit ? "更新" : "投稿";
 		const requiredAttr = isEdit ? "" : "required";
-		const isFailed = Boolean(isEdit && content?.state === "failed");
 		const warningLines = isEdit ? (content?.warnings ?? []).filter(Boolean) : [];
-		const zipLabel = isEdit
-			? content?.zipUrl
-				? utils.getFileNameFromUrl(content.zipUrl)
-				: content?.extractedPath
-					? (content.extractedPath.split("/").pop() ?? content.extractedPath)
-					: ""
-			: "";
+		const warningText = warningLines.map((line) => utils.escapeHtml(line)).join("<br>");
 		const warningsHtml =
-			isFailed && warningLines.length > 0
-				? `<div class="alert alert-warning small mt-2">警告${zipLabel ? `(${utils.escapeHtml(zipLabel)})` : ""}: ${warningLines
-						.map((line) => utils.escapeHtml(line))
-						.join("<br>")}</div>`
+			warningLines.length > 0 ? `<div class="alert alert-warning small mt-2">警告: ${warningText}</div>` : "";
+		const zipName = content?.zipUrl ? utils.getFileNameFromUrl(content.zipUrl) : "";
+		const existingZipLink =
+			isEdit && content?.zipUrl && content?.state !== "failed"
+				? `<div class="small mt-2">現在のZIP: <a href="${utils.escapeHtml(
+						content.zipUrl,
+					)}" target="_blank" rel="noopener">${utils.escapeHtml(zipName)}</a></div>`
 				: "";
-		const existingZipLink = isFailed
-			? warningsHtml
-			: isEdit && content?.extractedPath
-				? `<div class="small mt-2">解凍済みフォルダ: <span class="text-break">${utils.escapeHtml(
-						content.extractedPath,
-					)}</span></div>`
-				: isEdit && content?.zipUrl
-					? `<div class="small mt-2">現在のZIP: <a href="${utils.escapeHtml(
-							content.zipUrl,
-						)}" target="_blank" rel="noopener">${utils.escapeHtml(utils.getFileNameFromUrl(content.zipUrl))}</a></div>`
-					: "";
 		this.setContent(`
 			<div class="row justify-content-center">
 				<div class="col-md-8 col-lg-6">
@@ -699,6 +685,7 @@ export class App {
 										${requiredAttr}
 									/>
 									${existingZipLink}
+									${warningsHtml}
 								</div>
 								<div>
 									<label class="form-label" for="content-thumb">サムネイル画像</label>
@@ -957,21 +944,23 @@ export class App {
 		const descriptionHtml = description
 			? `<div class="agd-description text-start">${description}</div>`
 			: '<div class="text-secondary">説明はありません</div>';
-		const warningLines = content.state === "failed" ? (content.warnings ?? []).filter(Boolean) : [];
-		const archiveInfo =
-			content.state === "failed"
-				? warningLines.length > 0
-					? `<div class="alert alert-warning small mt-3">警告: ${warningLines
-							.map((line) => utils.escapeHtml(line))
-							.join("<br>")}</div>`
-					: ""
-				: "";
+		const warningLines = (content.warnings ?? []).filter(Boolean);
+		const warningText = warningLines.map((line) => utils.escapeHtml(line)).join("<br>");
+		const warningsHtml =
+			warningLines.length > 0 ? `<div class="alert alert-warning small mt-3">警告: ${warningText}</div>` : "";
 		const thumbnail = content.thumbnailUrl
 			? `<img class="img-fluid agd-thumb" src="${utils.escapeHtml(content.thumbnailUrl)}" alt="${title}" />`
 			: '<div class="text-secondary">サムネイルがありません</div>';
 		const createdAt = utils.formatTimestamp(content.createdAt);
 		const updatedAt = utils.formatTimestamp(content.updatedAt);
 		const metaLine = `${ownerLink} が ${createdAt} に投稿 (最終更新: ${updatedAt})`;
+		const canDownload = content.state === "ok" && content.trusted !== false && Boolean(content.extractedPath);
+		const downloadHtml = canDownload
+			? `<div class="mt-4">
+					<div class="fw-semibold mb-2">ダウンロード</div>
+					<div id="content-files" class="small text-secondary">読み込み中...</div>
+				</div>`
+			: "";
 		this.setContent(`
 			<div class="row justify-content-center">
 				<div class="col-md-8 col-lg-6">
@@ -987,7 +976,8 @@ export class App {
 								${thumbnail}
 							</div>
 							${descriptionHtml}
-							${archiveInfo}
+							${warningsHtml}
+							${downloadHtml}
 						</div>
 					</div>
 				</div>
@@ -999,6 +989,22 @@ export class App {
 			event.preventDefault();
 			utils.navigateTo(`/users/${encodeURIComponent(content.ownerId)}`);
 		});
+		if (canDownload) {
+			const container = utils.qs<HTMLElement>("#content-files");
+			if (container) {
+				void loadContentFiles({
+					content,
+					storage: this.firebase.storage,
+					container,
+					isDebugMode: utils.isDebugMode(),
+					messages: {
+						unavailable: "ダウンロードできません",
+						gameJsonFailed: "game.jsonの取得に失敗しました",
+						listFailed: "ファイル一覧の取得に失敗しました",
+					},
+				});
+			}
+		}
 	}
 
 	renderMyContent(

@@ -21,8 +21,8 @@ interface CreateParams {
 	authorization: string;
 	title: string;
 	description?: string;
-	zipUrl: string;
-	thumbnailUrl: string;
+	zipUrl?: string;
+	thumbnailUrl?: string;
 }
 
 interface CreateUploadUrlParams {
@@ -30,7 +30,7 @@ interface CreateUploadUrlParams {
 	kind: "zip" | "thumbnail";
 	mimeType: string;
 	fileName?: string;
-	contentId?: string;
+	contentId: string;
 }
 
 interface ListContentParams {
@@ -59,8 +59,8 @@ export class ContentsController extends BaseController {
 					params.headerBearerTokenValidator(),
 					validators.body("title").isString().notEmpty(),
 					validators.body("description").optional().isString(),
-					validators.body("zipUrl").isString().notEmpty(),
-					validators.body("thumbnailUrl").isString().notEmpty(),
+					validators.body("zipUrl").optional().isString().notEmpty(),
+					validators.body("thumbnailUrl").optional().isString().notEmpty(),
 				],
 				(context) =>
 					({
@@ -117,7 +117,7 @@ export class ContentsController extends BaseController {
 					validators.body("kind").isString().isIn(["zip", "thumbnail"]),
 					validators.body("mimeType").isString().notEmpty(),
 					validators.body("fileName").optional().isString().notEmpty(),
-					validators.body("contentId").optional().isString().notEmpty(),
+					validators.body("contentId").isString().notEmpty(),
 				],
 				(context) =>
 					({
@@ -143,11 +143,11 @@ export class ContentsController extends BaseController {
 			zipUrl: p.zipUrl,
 			thumbnailUrl: p.thumbnailUrl,
 		} as Pick<ContentRecord, "ownerId" | "title" | "description" | "zipUrl" | "thumbnailUrl">;
-		await storeContent(this.app.firestore, {
+		const contentId = await storeContent(this.app.firestore, {
 			...contentData,
 		});
 		return {
-			result: "ok",
+			contentId,
 		};
 	}
 
@@ -190,14 +190,10 @@ export class ContentsController extends BaseController {
 	async createUploadUrl(context: Context) {
 		const p = context.params as CreateUploadUrlParams;
 		const verifyResult = await this.verify(p.authorization);
-		const contentId = p.contentId?.trim();
-		if (contentId) {
-			const result = await resolvers.contents.resolve(this.app.firestore, contentId, verifyResult.uid);
-			if (result === null) {
-				throw new fw.types.NotFound("コンテンツが見つかりません");
-			}
-		} else {
-			await this.ensureContentLimit(verifyResult.uid);
+		const contentId = p.contentId.trim();
+		const result = await resolvers.contents.resolve(this.app.firestore, contentId, verifyResult.uid);
+		if (result === null) {
+			throw new fw.types.NotFound("コンテンツが見つかりません");
 		}
 		const storage = getStorage(this.app.firebaseApp);
 		const kind = p.kind;
@@ -225,7 +221,7 @@ export class ContentsController extends BaseController {
 		}
 		const suffix = Math.random().toString(36).slice(2, 10);
 		const objectName = kind === "zip" && fileName ? fileName : `${Date.now()}-${suffix}.${ext}`;
-		const destination = `uploads/${verifyResult.uid}/contents/${kind}/${objectName}`;
+		const destination = `uploads/${verifyResult.uid}/contents/${kind}/${contentId}/${objectName}`;
 		const [url] = await storage
 			.bucket()
 			.file(destination)

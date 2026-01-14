@@ -36,38 +36,20 @@ export function storeContent(
 	firestore: Firestore,
 	content: Pick<ContentRecord, "ownerId" | "title" | "description" | "zipUrl" | "thumbnailUrl">,
 ) {
-	return firestore.runTransaction(async (transaction) => {
-		const userDoc = firestore.collection("contents").doc();
-		const doc = await transaction.get(userDoc);
-		if (doc.exists) {
-			// Update existing content
-			transaction.update(
-				userDoc,
-				eraseUndefined({
-					ownerId: content.ownerId,
-					title: content.title,
-					description: content.description,
-					zipUrl: content.zipUrl,
-					thumbnailUrl: content.thumbnailUrl,
-					updatedAt: Timestamp.now(),
-				}),
-			);
-		} else {
-			// Create new content
-			transaction.set(
-				userDoc,
-				eraseUndefined({
-					ownerId: content.ownerId,
-					title: content.title,
-					description: content.description,
-					zipUrl: content.zipUrl,
-					thumbnailUrl: content.thumbnailUrl,
-					createdAt: Timestamp.now(),
-					updatedAt: Timestamp.now(),
-				}),
-			);
-		}
-	});
+	const contentDoc = firestore.collection("contents").doc();
+	return contentDoc
+		.set(
+			eraseUndefined({
+				ownerId: content.ownerId,
+				title: content.title,
+				description: content.description,
+				zipUrl: content.zipUrl,
+				thumbnailUrl: content.thumbnailUrl,
+				createdAt: Timestamp.now(),
+				updatedAt: Timestamp.now(),
+			}),
+		)
+		.then(() => contentDoc.id);
 }
 
 export function updateContent(

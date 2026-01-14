@@ -11,6 +11,7 @@ import { getUser } from "./resolvers";
 import { connectFirestoreEmulator } from "firebase/firestore";
 import { connectStorageEmulator, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Client } from "./api/client";
+import type { UpdateContentInput } from "./api/contents";
 import { createContent, createContentUploadUrl, getContentById, listMyContents, updateContent } from "./api/contents";
 import { createUser, getUserById, listUserContents } from "./api/users";
 
@@ -641,12 +642,32 @@ export class App {
 		const title = isEdit ? `${profileName} のコンテンツ編集` : `${profileName} のコンテンツ投稿`;
 		const submitLabel = isEdit ? "更新" : "投稿";
 		const requiredAttr = isEdit ? "" : "required";
-		const existingZipLink =
-			isEdit && content?.zipUrl
-				? `<div class="small mt-2">現在のZIP: <a href="${utils.escapeHtml(
-						content.zipUrl,
-					)}" target="_blank" rel="noopener">${utils.escapeHtml(utils.getFileNameFromUrl(content.zipUrl))}</a></div>`
+		const isFailed = Boolean(isEdit && content?.state === "failed");
+		const warningLines = isEdit ? (content?.warnings ?? []).filter(Boolean) : [];
+		const zipLabel = isEdit
+			? content?.zipUrl
+				? utils.getFileNameFromUrl(content.zipUrl)
+				: content?.extractedPath
+					? (content.extractedPath.split("/").pop() ?? content.extractedPath)
+					: ""
+			: "";
+		const warningsHtml =
+			isFailed && warningLines.length > 0
+				? `<div class="alert alert-warning small mt-2">警告${zipLabel ? `(${utils.escapeHtml(zipLabel)})` : ""}: ${warningLines
+						.map((line) => utils.escapeHtml(line))
+						.join("<br>")}</div>`
 				: "";
+		const existingZipLink = isFailed
+			? warningsHtml
+			: isEdit && content?.extractedPath
+				? `<div class="small mt-2">解凍済みフォルダ: <span class="text-break">${utils.escapeHtml(
+						content.extractedPath,
+					)}</span></div>`
+				: isEdit && content?.zipUrl
+					? `<div class="small mt-2">現在のZIP: <a href="${utils.escapeHtml(
+							content.zipUrl,
+						)}" target="_blank" rel="noopener">${utils.escapeHtml(utils.getFileNameFromUrl(content.zipUrl))}</a></div>`
+					: "";
 		this.setContent(`
 			<div class="row justify-content-center">
 				<div class="col-md-8 col-lg-6">
@@ -720,6 +741,7 @@ export class App {
 		const previewPlaceholder = utils.qsStrict<HTMLDivElement>("#content-thumb-placeholder");
 		const submitBtn = utils.qsStrict<HTMLButtonElement>("#content-submit");
 		const existingZipUrl = content?.zipUrl ?? "";
+		const hasExtractedPath = Boolean(content?.extractedPath);
 		const existingThumbUrl = content?.thumbnailUrl ?? "";
 		titleInput.value = content?.title ?? "";
 		descInput.value = content?.description ?? "";
@@ -782,7 +804,10 @@ export class App {
 			}
 			return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(filePath)}?alt=media`;
 		};
-		const uploadFile = async (file: File, kind: "zip" | "thumbnail") => {
+		const uploadFile = async (file: File, kind: "zip" | "thumbnail", contentId: string) => {
+			if (!contentId) {
+				throw new Error("コンテンツIDが不正です");
+			}
 			const mimeType = file.type || (kind === "zip" ? "application/zip" : "image/png");
 			if (utils.isDebugMode()) {
 				const currentUser = this.state.user;
@@ -793,7 +818,7 @@ export class App {
 					throw new Error("ファイル名に使用できない文字が含まれています");
 				}
 				const objectName = kind === "zip" ? file.name : `${Date.now()}-${file.name}`;
-				const objectPath = `uploads/${currentUser.uid}/contents/${kind}/${objectName}`;
+				const objectPath = `uploads/${currentUser.uid}/contents/${kind}/${contentId}/${objectName}`;
 				const storageRef = ref(this.firebase.storage, objectPath);
 				await uploadBytes(storageRef, file, {
 					contentType: mimeType,
@@ -806,7 +831,7 @@ export class App {
 				kind,
 				mimeType,
 				fileName: kind === "zip" ? file.name : undefined,
-				contentId: isEdit ? content?.id : undefined,
+				contentId,
 			});
 			const maxSize = kind === "zip" ? maxZipSize : maxThumbSize;
 			const uploadResponse = await fetch(uploadInfo.data.url, {
@@ -833,7 +858,7 @@ export class App {
 				return;
 			}
 			const zipFile = zipInput.files?.[0];
-			if (!zipFile && !existingZipUrl) {
+			if (!zipFile && !existingZipUrl && !hasExtractedPath) {
 				this.showToast("ZIPファイルを選択してください", "error");
 				return;
 			}
@@ -867,20 +892,34 @@ export class App {
 			const submitLabelText = submitBtn.textContent;
 			submitBtn.textContent = isEdit ? "更新中..." : "投稿中...";
 			try {
-				const zipUrl = zipFile ? await uploadFile(zipFile, "zip") : existingZipUrl;
-				const thumbnailUrl = thumbFile ? await uploadFile(thumbFile, "thumbnail") : existingThumbUrl;
 				const description = descInput.value.trim();
-				const descriptionValue = isEdit ? description : description ? description : undefined;
+				const descriptionValue = isEdit ? description : description || undefined;
+				const contentId = isEdit
+					? content?.id
+					: (await createContent(this.apiClient, { title, description: descriptionValue })).data.contentId;
+				if (!contentId) {
+					throw new Error("コンテンツIDが不正です");
+				}
+				const zipUrl = zipFile ? await uploadFile(zipFile, "zip", contentId) : existingZipUrl || undefined;
+				const thumbnailUrl = thumbFile
+					? await uploadFile(thumbFile, "thumbnail", contentId)
+					: existingThumbUrl;
 				if (isEdit && content) {
-					await updateContent(this.apiClient, content.id, {
+					const updatePayload: UpdateContentInput = {
 						title,
 						description: descriptionValue,
-						zipUrl,
 						thumbnailUrl,
-					});
+					};
+					if (zipUrl) {
+						updatePayload.zipUrl = zipUrl;
+					}
+					await updateContent(this.apiClient, content.id, updatePayload);
 					this.showToast("更新しました");
 				} else {
-					await createContent(this.apiClient, {
+					if (!zipUrl) {
+						throw new Error("ZIPファイルを選択してください");
+					}
+					await updateContent(this.apiClient, contentId, {
 						title,
 						description: descriptionValue,
 						zipUrl,
@@ -918,13 +957,21 @@ export class App {
 		const descriptionHtml = description
 			? `<div class="agd-description text-start">${description}</div>`
 			: '<div class="text-secondary">説明はありません</div>';
+		const warningLines = content.state === "failed" ? (content.warnings ?? []).filter(Boolean) : [];
+		const archiveInfo =
+			content.state === "failed"
+				? warningLines.length > 0
+					? `<div class="alert alert-warning small mt-3">警告: ${warningLines
+							.map((line) => utils.escapeHtml(line))
+							.join("<br>")}</div>`
+					: ""
+				: "";
 		const thumbnail = content.thumbnailUrl
 			? `<img class="img-fluid agd-thumb" src="${utils.escapeHtml(content.thumbnailUrl)}" alt="${title}" />`
 			: '<div class="text-secondary">サムネイルがありません</div>';
 		const createdAt = utils.formatTimestamp(content.createdAt);
 		const updatedAt = utils.formatTimestamp(content.updatedAt);
 		const metaLine = `${ownerLink} が ${createdAt} に投稿 (最終更新: ${updatedAt})`;
-
 		this.setContent(`
 			<div class="row justify-content-center">
 				<div class="col-md-8 col-lg-6">
@@ -940,6 +987,7 @@ export class App {
 								${thumbnail}
 							</div>
 							${descriptionHtml}
+							${archiveInfo}
 						</div>
 					</div>
 				</div>
@@ -996,12 +1044,6 @@ export class App {
 								const titleLink = `<a class="text-decoration-none text-reset js-content-link" href="${utils.escapeHtml(
 									contentLink,
 								)}" data-content-id="${utils.escapeHtml(content.id)}">${title}</a>`;
-								const zipName = content.zipUrl ? utils.getFileNameFromUrl(content.zipUrl) : "";
-								const zipLink = content.zipUrl
-									? `<a class="small mt-2 d-inline-block" href="${utils.escapeHtml(
-											content.zipUrl,
-										)}" target="_blank" rel="noopener">${utils.escapeHtml(zipName)}</a>`
-									: "";
 								const contentCreatedAt = utils.formatTimestamp(content.createdAt);
 								const thumbnail = content.thumbnailUrl
 									? `<img class="agd-thumb-sm rounded" src="${utils.escapeHtml(content.thumbnailUrl)}" alt="${title}" />`
@@ -1023,7 +1065,6 @@ export class App {
 													<div class="fw-semibold">${titleLink}</div>
 													<div class="text-secondary small">作成日: ${contentCreatedAt}</div>
 													${description}
-													${zipLink}
 												</div>
 												${editButton}
 											</div>

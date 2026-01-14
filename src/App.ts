@@ -643,16 +643,11 @@ export class App {
 		const title = isEdit ? `${profileName} のコンテンツ編集` : `${profileName} のコンテンツ投稿`;
 		const submitLabel = isEdit ? "更新" : "投稿";
 		const requiredAttr = isEdit ? "" : "required";
-		const zipName = content?.zipUrl ? utils.getFileNameFromUrl(content.zipUrl) : "";
 		const warningLines = isEdit ? (content?.warnings ?? []).filter(Boolean) : [];
-		const warningText = warningLines
-			.map((line) => (zipName ? `${zipName} ${line}` : line))
-			.map((line) => utils.escapeHtml(line))
-			.join("<br>");
+		const warningText = warningLines.map((line) => utils.escapeHtml(line)).join("<br>");
 		const warningsHtml =
-			warningLines.length > 0
-				? `<div class="alert alert-warning small mt-2">警告: ${warningText}</div>`
-				: "";
+			warningLines.length > 0 ? `<div class="alert alert-warning small mt-2">警告: ${warningText}</div>` : "";
+		const zipName = content?.zipUrl ? utils.getFileNameFromUrl(content.zipUrl) : "";
 		const existingZipLink =
 			isEdit && content?.zipUrl && content?.state !== "failed"
 				? `<div class="small mt-2">現在のZIP: <a href="${utils.escapeHtml(
@@ -949,12 +944,8 @@ export class App {
 		const descriptionHtml = description
 			? `<div class="agd-description text-start">${description}</div>`
 			: '<div class="text-secondary">説明はありません</div>';
-		const zipName = content.zipUrl ? utils.getFileNameFromUrl(content.zipUrl) : "";
 		const warningLines = (content.warnings ?? []).filter(Boolean);
-		const warningText = warningLines
-			.map((line) => (zipName ? `${zipName} ${line}` : line))
-			.map((line) => utils.escapeHtml(line))
-			.join("<br>");
+		const warningText = warningLines.map((line) => utils.escapeHtml(line)).join("<br>");
 		const warningsHtml =
 			warningLines.length > 0 ? `<div class="alert alert-warning small mt-3">警告: ${warningText}</div>` : "";
 		const thumbnail = content.thumbnailUrl

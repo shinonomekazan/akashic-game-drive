@@ -14,7 +14,7 @@ export interface ContentRecord {
 	ownerId: string;
 	title: string;
 	description?: string;
-	zipUrl?: string;
+	zipUrl?: string | null;
 	thumbnailUrl?: string;
 	state?: "ok" | "failed";
 	warnings?: string[];

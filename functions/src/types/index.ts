@@ -13,8 +13,12 @@ export interface ContentRecord {
 	ownerId: string;
 	title: string;
 	description?: string;
-	zipUrl?: string;
+	zipUrl?: string | null;
 	thumbnailUrl?: string;
+	extractedPath?: string | null;
+	state?: "ok" | "failed";
+	warnings?: string[];
+	trusted?: boolean;
 	createdAt?: Timestamp | null;
 	updatedAt?: Timestamp | null;
 }

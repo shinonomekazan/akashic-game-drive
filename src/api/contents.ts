@@ -4,8 +4,8 @@ import type { Client } from "./client";
 export interface CreateContentInput {
 	title: string;
 	description?: string;
-	zipUrl: string;
-	thumbnailUrl: string;
+	zipUrl?: string;
+	thumbnailUrl?: string;
 }
 
 export interface UpdateContentInput {
@@ -19,7 +19,7 @@ export interface CreateContentUploadUrlInput {
 	kind: "zip" | "thumbnail";
 	mimeType: string;
 	fileName?: string;
-	contentId?: string;
+	contentId: string;
 }
 
 export interface CreateContentUploadUrlResult {
@@ -28,7 +28,11 @@ export interface CreateContentUploadUrlResult {
 }
 
 export async function createContent(client: Client, input: CreateContentInput) {
-	return client.callWithAuthorization<{ result: string }>("POST", "/contents", JSON.stringify(input));
+	return client.callWithAuthorization<{ result: string; contentId: string }>(
+		"POST",
+		"/contents",
+		JSON.stringify(input),
+	);
 }
 
 export async function updateContent(client: Client, contentId: string, input: UpdateContentInput) {

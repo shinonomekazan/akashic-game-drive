@@ -54,4 +54,7 @@ export const api = onRequest({ region: "asia-northeast1" }, (request, response) 
 	}
 });
 
-export const onZipUploaded = onObjectFinalized({ region: "asia-northeast1" }, handleStorageZipFinalize);
+export const onZipUploaded = onObjectFinalized(
+	{ region: "asia-northeast1", timeoutSeconds: 300 },
+	handleStorageZipFinalize,
+);

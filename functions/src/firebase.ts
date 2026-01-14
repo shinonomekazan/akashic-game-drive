@@ -16,6 +16,10 @@ export async function getFirebaseApp(): Promise<FirebaseApp> {
 			credential: applicationDefault(),
 			storageBucket: config.app.storageBucket,
 		});
+	}).catch((error) => {
+		// Reset the cached promise to allow retry attempts on subsequent calls.
+		firebaseAppPromise = null;
+		throw error;
 	});
 	return firebaseAppPromise;
 }

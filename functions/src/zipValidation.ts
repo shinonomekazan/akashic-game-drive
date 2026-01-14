@@ -41,6 +41,7 @@ function isTopLevelZipObject(objectName: string) {
 	const lowerName = objectName.toLowerCase();
 	if (lowerName.includes(".zip/")) return false;
 	const parts = objectName.split("/");
+	if (parts.length < 4) return false;
 	if (parts[0] !== "uploads" || parts[2] !== "contents" || parts[3] !== "zip") return false;
 	if (parts.length === 6) return parts[5].toLowerCase().endsWith(".zip");
 	if (parts.length === 5) return parts[4].toLowerCase().endsWith(".zip");
@@ -101,7 +102,7 @@ function scanForDisallowedUsage(entries: NormalizedEntry[]) {
 	const fetchRegex = /\bfetch\b/;
 	const xhrRegex = /\bXMLHttpRequest\b/;
 	const mathRandomRegex = /\bMath\.random\b/;
-	const dateRegex = /\bDate\b/;
+	const dateRegex = /\bnew\s+Date\b|\bDate\./;
 
 	for (const entry of entries) {
 		const ext = path.posix.extname(entry.normalizedPath).toLowerCase();
@@ -231,23 +232,6 @@ function buildStorageUrl(bucketName: string, objectName: string) {
 	return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(objectName)}?alt=media`;
 }
 
-function parseStorageUrl(zipUrl: string) {
-	if (zipUrl.startsWith("gs://")) {
-		const trimmed = zipUrl.slice(5);
-		const [bucket, ...rest] = trimmed.split("/");
-		if (!bucket || rest.length === 0) return null;
-		return { bucket, objectPath: rest.join("/") };
-	}
-	try {
-		const url = new URL(zipUrl);
-		const match = url.pathname.match(/^\/v0\/b\/([^/]+)\/o\/(.+)$/);
-		if (!match) return null;
-		return { bucket: match[1], objectPath: decodeURIComponent(match[2]) };
-	} catch (error) {
-		return null;
-	}
-}
-
 function buildExtractPrefix(objectName: string) {
 	const dir = path.posix.dirname(objectName);
 	const base = path.posix.basename(objectName);
@@ -256,10 +240,21 @@ function buildExtractPrefix(objectName: string) {
 
 function parseContentIdFromObjectName(objectName: string) {
 	const parts = objectName.split("/");
-	if (parts.length !== 6) return null;
-	if (parts[0] !== "uploads" || parts[2] !== "contents" || parts[3] !== "zip") return null;
-	if (!parts[5].toLowerCase().endsWith(".zip")) return null;
-	return parts[4] || null;
+	// 6-part format: uploads/{uid}/contents/zip/{contentId}/{filename}.zip
+	if (parts.length === 6) {
+		if (parts[0] !== "uploads" || parts[2] !== "contents" || parts[3] !== "zip") return null;
+		if (!parts[5].toLowerCase().endsWith(".zip")) return null;
+		return parts[4] || null;
+	}
+	// 5-part format: uploads/{uid}/contents/zip/{filename}.zip
+	if (parts.length === 5) {
+		if (parts[0] !== "uploads" || parts[2] !== "contents" || parts[3] !== "zip") return null;
+		const filename = parts[4];
+		if (!filename.toLowerCase().endsWith(".zip")) return null;
+		const contentId = filename.slice(0, -4);
+		return contentId || null;
+	}
+	return null;
 }
 
 async function processZipFile(bucketName: string, objectName: string, contentRef: DocumentReference) {
@@ -334,25 +329,4 @@ export async function handleStorageZipFinalize(event: {
 	if (snapshot.empty) return;
 	const contentRef = snapshot.docs[0].ref;
 	await processZipFile(object.bucket, object.name, contentRef);
-}
-
-export async function handleContentZipWrite(event: {
-	data?: {
-		before?: { data: () => { zipUrl?: string } | undefined };
-		after?: { data: () => { zipUrl?: string } | undefined };
-	};
-	params: { contentId: string };
-}) {
-	const after = event.data?.after?.data();
-	if (!after?.zipUrl) return;
-	const before = event.data?.before?.data();
-	if (before?.zipUrl === after.zipUrl) return;
-
-	const parsed = parseStorageUrl(after.zipUrl);
-	if (!parsed) return;
-
-	const app = await getFirebaseApp();
-	const firestore = getFirestore(app);
-	const contentRef = firestore.collection("contents").doc(event.params.contentId);
-	await processZipFile(parsed.bucket, parsed.objectPath, contentRef);
 }

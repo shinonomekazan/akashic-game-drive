@@ -893,7 +893,7 @@ export class App {
 			submitBtn.textContent = isEdit ? "更新中..." : "投稿中...";
 			try {
 				const description = descInput.value.trim();
-				const descriptionValue = isEdit ? description : description ? description : undefined;
+				const descriptionValue = isEdit ? description : description || undefined;
 				const contentId = isEdit
 					? content?.id
 					: (await createContent(this.apiClient, { title, description: descriptionValue })).data.contentId;

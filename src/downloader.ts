@@ -21,6 +21,23 @@ interface DownloadLink {
 	url: string;
 }
 
+async function forceDownload(url: string, filename: string) {
+	const response = await fetch(url);
+	if (!response.ok) {
+		throw new Error("DOWNLOAD_FAILED");
+	}
+	const blob = await response.blob();
+	const objectUrl = URL.createObjectURL(blob);
+	const anchor = document.createElement("a");
+	anchor.href = objectUrl;
+	anchor.download = filename;
+	anchor.style.display = "none";
+	document.body.appendChild(anchor);
+	anchor.click();
+	anchor.remove();
+	URL.revokeObjectURL(objectUrl);
+}
+
 function normalizePath(value: string) {
 	const trimmed = value
 		.trim()
@@ -102,18 +119,33 @@ export async function loadContentFiles({
 }: DownloadOptions): Promise<void> {
 	try {
 		const links = await buildDownloadLinks(content, storage, isDebugMode);
+		const handleDownload = async (event: Event) => {
+			const target = event.target as HTMLElement | null;
+			const linkEl = target?.closest<HTMLAnchorElement>("a[data-file]");
+			if (!linkEl) return;
+			event.preventDefault();
+			const url = linkEl.dataset.url;
+			const name = linkEl.dataset.file;
+			if (!url || !name) return;
+			try {
+				await forceDownload(url, name);
+			} catch {
+				container.textContent = messages.listFailed;
+			}
+		};
 		container.innerHTML = `
 			<div class="d-grid gap-1">
 				${links
 					.map(
 						(link) =>
-							`<a class="text-decoration-none" href="${utils.escapeHtml(
-								link.url,
-							)}" target="_blank" rel="noopener">${utils.escapeHtml(link.filePath)}</a>`,
+							`<a class="text-decoration-none" href="${utils.escapeHtml(link.url)}" data-file="${utils.escapeHtml(
+								link.filePath,
+							)}" data-url="${utils.escapeHtml(link.url)}">${utils.escapeHtml(link.filePath)}</a>`,
 					)
 					.join("")}
 			</div>
 		`;
+		container.addEventListener("click", handleDownload);
 	} catch (error) {
 		const code = (error as Error).message;
 		if (code === "UNAVAILABLE") {

@@ -13,6 +13,7 @@ import { connectStorageEmulator, getDownloadURL, ref, uploadBytes } from "fireba
 import { Client } from "./api/client";
 import { createContent, createContentUploadUrl, getContentById, listMyContents, updateContent } from "./api/contents";
 import { createUser, getUserById, listUserContents } from "./api/users";
+import { loadContentFiles } from "./downloader";
 
 export class App {
 	firebase: FirebaseInstance;
@@ -641,11 +642,21 @@ export class App {
 		const title = isEdit ? `${profileName} のコンテンツ編集` : `${profileName} のコンテンツ投稿`;
 		const submitLabel = isEdit ? "更新" : "投稿";
 		const requiredAttr = isEdit ? "" : "required";
+		const zipName = content?.zipUrl ? utils.getFileNameFromUrl(content.zipUrl) : "";
+		const warningLines = isEdit && content?.state === "failed" ? (content?.warnings ?? []).filter(Boolean) : [];
+		const warningText = warningLines
+			.map((line) => (zipName ? `${zipName} ${line}` : line))
+			.map((line) => utils.escapeHtml(line))
+			.join("<br>");
+		const warningsHtml =
+			warningLines.length > 0
+				? `<div class="alert alert-warning small mt-2">警告: ${warningText}</div>`
+				: "";
 		const existingZipLink =
-			isEdit && content?.zipUrl
+			isEdit && content?.zipUrl && content?.state !== "failed"
 				? `<div class="small mt-2">現在のZIP: <a href="${utils.escapeHtml(
 						content.zipUrl,
-					)}" target="_blank" rel="noopener">${utils.escapeHtml(utils.getFileNameFromUrl(content.zipUrl))}</a></div>`
+					)}" target="_blank" rel="noopener">${utils.escapeHtml(zipName)}</a></div>`
 				: "";
 		this.setContent(`
 			<div class="row justify-content-center">
@@ -678,6 +689,7 @@ export class App {
 										${requiredAttr}
 									/>
 									${existingZipLink}
+									${warningsHtml}
 								</div>
 								<div>
 									<label class="form-label" for="content-thumb">サムネイル画像</label>
@@ -924,6 +936,21 @@ export class App {
 		const createdAt = utils.formatTimestamp(content.createdAt);
 		const updatedAt = utils.formatTimestamp(content.updatedAt);
 		const metaLine = `${ownerLink} が ${createdAt} に投稿 (最終更新: ${updatedAt})`;
+		const zipName = content.zipUrl ? utils.getFileNameFromUrl(content.zipUrl) : "";
+		const warningLines = content.state === "failed" ? (content.warnings ?? []).filter(Boolean) : [];
+		const warningText = warningLines
+			.map((line) => (zipName ? `${zipName} ${line}` : line))
+			.map((line) => utils.escapeHtml(line))
+			.join("<br>");
+		const warningsHtml =
+			warningLines.length > 0 ? `<div class="alert alert-warning small mt-3">警告: ${warningText}</div>` : "";
+		const canDownload = content.state === "ok" && content.trusted !== false && Boolean(content.extractedPath);
+		const downloadHtml = canDownload
+			? `<div class="mt-4">
+					<div class="fw-semibold mb-2">ダウンロード</div>
+					<div id="content-files" class="small text-secondary">読み込み中...</div>
+				</div>`
+			: "";
 
 		this.setContent(`
 			<div class="row justify-content-center">
@@ -940,6 +967,8 @@ export class App {
 								${thumbnail}
 							</div>
 							${descriptionHtml}
+							${warningsHtml}
+							${downloadHtml}
 						</div>
 					</div>
 				</div>
@@ -951,6 +980,22 @@ export class App {
 			event.preventDefault();
 			utils.navigateTo(`/users/${encodeURIComponent(content.ownerId)}`);
 		});
+		if (canDownload) {
+			const container = utils.qs<HTMLElement>("#content-files");
+			if (container) {
+				void loadContentFiles({
+					content,
+					storage: this.firebase.storage,
+					container,
+					isDebugMode: utils.isDebugMode(),
+					messages: {
+						unavailable: "ダウンロードできません",
+						gameJsonFailed: "game.jsonの取得に失敗しました",
+						listFailed: "ファイル一覧の取得に失敗しました",
+					},
+				});
+			}
+		}
 	}
 
 	renderMyContent(
@@ -996,12 +1041,6 @@ export class App {
 								const titleLink = `<a class="text-decoration-none text-reset js-content-link" href="${utils.escapeHtml(
 									contentLink,
 								)}" data-content-id="${utils.escapeHtml(content.id)}">${title}</a>`;
-								const zipName = content.zipUrl ? utils.getFileNameFromUrl(content.zipUrl) : "";
-								const zipLink = content.zipUrl
-									? `<a class="small mt-2 d-inline-block" href="${utils.escapeHtml(
-											content.zipUrl,
-										)}" target="_blank" rel="noopener">${utils.escapeHtml(zipName)}</a>`
-									: "";
 								const contentCreatedAt = utils.formatTimestamp(content.createdAt);
 								const thumbnail = content.thumbnailUrl
 									? `<img class="agd-thumb-sm rounded" src="${utils.escapeHtml(content.thumbnailUrl)}" alt="${title}" />`
@@ -1023,7 +1062,6 @@ export class App {
 													<div class="fw-semibold">${titleLink}</div>
 													<div class="text-secondary small">作成日: ${contentCreatedAt}</div>
 													${description}
-													${zipLink}
 												</div>
 												${editButton}
 											</div>

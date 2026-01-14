@@ -16,6 +16,10 @@ export interface ContentRecord {
 	description?: string;
 	zipUrl?: string;
 	thumbnailUrl?: string;
+	state?: "ok" | "failed";
+	warnings?: string[];
+	trusted?: boolean;
+	extractedPath?: string | null;
 	createdAt?: Timestamp | null;
 	updatedAt?: Timestamp | null;
 }

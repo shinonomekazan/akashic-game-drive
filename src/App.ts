@@ -647,6 +647,7 @@ export class App {
 		const warningText = warningLines.map((line) => utils.escapeHtml(line)).join("<br>");
 		const warningsHtml =
 			warningLines.length > 0 ? `<div class="alert alert-warning small mt-2">警告: ${warningText}</div>` : "";
+		const stateLabelHtml = isEdit ? utils.getContentStateLabel(content?.state) : "";
 		const zipName = content?.zipUrl ? utils.getFileNameFromUrl(content.zipUrl) : "";
 		const existingZipLink =
 			isEdit && content?.zipUrl && content?.state !== "failed"
@@ -686,6 +687,7 @@ export class App {
 									/>
 									${existingZipLink}
 									${warningsHtml}
+									${stateLabelHtml}
 								</div>
 								<div>
 									<label class="form-label" for="content-thumb">サムネイル画像</label>
@@ -948,6 +950,7 @@ export class App {
 		const warningText = warningLines.map((line) => utils.escapeHtml(line)).join("<br>");
 		const warningsHtml =
 			warningLines.length > 0 ? `<div class="alert alert-warning small mt-3">警告: ${warningText}</div>` : "";
+		const stateLabelHtml = utils.getContentStateLabel(content.state);
 		const thumbnail = content.thumbnailUrl
 			? `<img class="img-fluid agd-thumb" src="${utils.escapeHtml(content.thumbnailUrl)}" alt="${title}" />`
 			: '<div class="text-secondary">サムネイルがありません</div>';
@@ -977,6 +980,7 @@ export class App {
 							</div>
 							${descriptionHtml}
 							${warningsHtml}
+							${stateLabelHtml}
 							${downloadHtml}
 						</div>
 					</div>
@@ -1046,6 +1050,8 @@ export class App {
 								const description = content.description
 									? `<div class="text-secondary small mt-1">${utils.escapeHtml(content.description)}</div>`
 									: "";
+								const stateLabel = utils.getStateListContentLabel(content.state);
+								const stateLabelHtml = stateLabel;
 								const contentLink = `/contents/${encodeURIComponent(content.id)}`;
 								const titleLink = `<a class="text-decoration-none text-reset js-content-link" href="${utils.escapeHtml(
 									contentLink,
@@ -1071,6 +1077,7 @@ export class App {
 													<div class="fw-semibold">${titleLink}</div>
 													<div class="text-secondary small">作成日: ${contentCreatedAt}</div>
 													${description}
+													<div class="mt-1">${stateLabelHtml}</div>
 												</div>
 												${editButton}
 											</div>

@@ -137,3 +137,25 @@ export function formatTimestamp(value: unknown) {
 		jstDate.getUTCDate(),
 	)} ${pad2(jstDate.getUTCHours())}:${pad2(jstDate.getUTCMinutes())}`;
 }
+
+export function getStateListContentLabel(state: ContentRecord["state"]) {
+	switch (state) {
+		case "ok":
+			return "<span>利用可能です</span>";
+		case "failed":
+			return '<span class="badge bg-danger">このコンテンツは現在利用できません</span>';
+		case undefined:
+			return '<span class="badge bg-warning">このコンテンツは現在処理中なため利用できません</span>';
+	}
+}
+
+export function getContentStateLabel(state: ContentRecord["state"]) {
+	switch (state) {
+		case "ok":
+			return '<div class="small mt-2">利用可能です</div>';
+		case "failed":
+			return '<div class="alert alert-danger small mt-2">このコンテンツは現在利用できません</div>';
+		case undefined:
+			return '<div class="alert alert-warning small mt-2">このコンテンツは現在処理中なため利用できません</div>';
+	}
+}

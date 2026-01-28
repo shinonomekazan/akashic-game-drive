@@ -26,9 +26,7 @@ export function isDebugMode() {
 }
 
 export function navigateTo(path: string) {
-	const url = new URL(location.href);
-	url.hash = "";
-	url.pathname = path;
+	const url = new URL(path, location.origin);
 	if (isDebugMode()) {
 		url.searchParams.set("debug", "true");
 	}

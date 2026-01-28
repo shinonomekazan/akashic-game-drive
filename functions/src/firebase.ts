@@ -7,19 +7,22 @@ let firebaseAppPromise: Promise<FirebaseApp> | null = null;
 
 export async function getFirebaseApp(): Promise<FirebaseApp> {
 	if (firebaseAppPromise) return firebaseAppPromise;
-	firebaseAppPromise = fw.Configure<Config>(path.resolve(__dirname, "config")).then((config) => {
-		const apps = getApps();
-		if (apps.length > 0) {
-			return apps[0];
-		}
-		return initializeApp({
-			credential: applicationDefault(),
-			storageBucket: config.app.storageBucket,
+	firebaseAppPromise = fw
+		.Configure<Config>(path.resolve(__dirname, "config"))
+		.then((config) => {
+			const apps = getApps();
+			if (apps.length > 0) {
+				return apps[0];
+			}
+			return initializeApp({
+				credential: applicationDefault(),
+				storageBucket: config.app.storageBucket,
+			});
+		})
+		.catch((error) => {
+			// Reset the cached promise to allow retry attempts on subsequent calls.
+			firebaseAppPromise = null;
+			throw error;
 		});
-	}).catch((error) => {
-		// Reset the cached promise to allow retry attempts on subsequent calls.
-		firebaseAppPromise = null;
-		throw error;
-	});
 	return firebaseAppPromise;
 }

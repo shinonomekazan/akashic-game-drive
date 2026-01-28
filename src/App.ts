@@ -13,7 +13,7 @@ import { connectStorageEmulator, getDownloadURL, ref, uploadBytes } from "fireba
 import { Client } from "./api/client";
 import type { UpdateContentInput } from "./api/contents";
 import { createContent, createContentUploadUrl, getContentById, listMyContents, updateContent } from "./api/contents";
-import { createUser, getUserById, listUserContents } from "./api/users";
+import { createFeedback, createUser, getUserById, listUserContents } from "./api/users";
 import { loadContentFiles } from "./downloader";
 
 export class App {
@@ -239,11 +239,14 @@ export class App {
 		}
 
 		const isOwnPage = this.state.user?.uid === userId;
+		const isSignedIn = this.state.user !== null;
 		this.renderMyContent(this.state.userPageProfile, this.state.userPageContents, {
 			allowEdit: false,
 			showActions: false,
 			showCreate: false,
 			nameLink: isOwnPage ? "/my" : null,
+			showFeedbackForm: !isOwnPage && isSignedIn,
+			showFeedbackLoginPrompt: !isOwnPage && !isSignedIn,
 		});
 	}
 
@@ -1014,11 +1017,23 @@ export class App {
 	renderMyContent(
 		profile: UserProfile | null,
 		contents: ContentRecord[],
-		options: { allowEdit?: boolean; showActions?: boolean; showCreate?: boolean; nameLink?: string | null } = {},
+		options: {
+			allowEdit?: boolean;
+			showActions?: boolean;
+			showCreate?: boolean;
+			nameLink?: string | null;
+			showFeedbackForm?: boolean;
+			showFeedbackLoginPrompt?: boolean;
+		} = {},
 	) {
 		const allowEdit = options.allowEdit ?? true;
 		const showActions = options.showActions ?? true;
 		const showCreate = options.showCreate ?? true;
+		const showFeedbackForm = options.showFeedbackForm ?? false;
+		const showFeedbackLoginPrompt = options.showFeedbackLoginPrompt ?? false;
+		const loginHref = `/login?next=${encodeURIComponent(window.location.pathname || "/")}${
+			utils.isDebugMode() ? "&debug=true" : ""
+		}`;
 		const showLogout = showActions && this.state.user !== null;
 		const showEditProfile = showActions && allowEdit;
 		const showCreateButton = showCreate && this.state.user !== null;
@@ -1111,6 +1126,40 @@ export class App {
 			</div>
 		`
 			: "";
+		const feedbackFormHtml = showFeedbackForm
+			? `
+			<div class="card shadow-sm mt-4">
+				<div class="card-body">
+					<h2 class="h6 mb-3">このユーザーにコメントを送る</h2>
+					<form class="d-grid gap-3">
+						<div>
+							<label class="form-label" for="feedback-title">件名</label>
+							<input id="feedback-title" name="title" class="form-control" type="text" />
+						</div>
+						<div>
+							<label class="form-label" for="feedback-detail">内容</label>
+							<textarea id="feedback-detail" name="detail" class="form-control" rows="4"></textarea>
+						</div>
+						<div class="d-flex justify-content-center">
+							<button id="send-feedback" class="btn btn-primary" type="button" data-receiver-id="${utils.escapeHtml(
+								profile?.uid ?? "",
+							)}">送信</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		`
+			: "";
+		const feedbackLoginPromptHtml = showFeedbackLoginPrompt
+			? `
+			<div class="card shadow-sm mt-4">
+				<div class="card-body text-center text-secondary">
+					ログインしてコメントしてください。
+					<a class="text-decoration-none" href="${utils.escapeHtml(loginHref)}">ログイン</a>
+				</div>
+			</div>
+		`
+			: "";
 
 		this.setContent(`
 			${profileNotice}
@@ -1130,6 +1179,8 @@ export class App {
 					${contentsHtml}
 				</div>
 			</div>
+			${feedbackFormHtml}
+			${feedbackLoginPromptHtml}
 		`);
 
 		this.bindMyActions();
@@ -1194,10 +1245,50 @@ export class App {
 				utils.navigateTo(`/contents/${encodeURIComponent(contentId)}`);
 			});
 		});
+
+		const sendFeedbackBtn = utils.qs<HTMLButtonElement>("#send-feedback");
+		if (sendFeedbackBtn) {
+			sendFeedbackBtn.addEventListener("click", async () => {
+				const titleInput = utils.qs<HTMLInputElement>("#feedback-title");
+				const detailInput = utils.qs<HTMLTextAreaElement>("#feedback-detail");
+				const receiverId = sendFeedbackBtn.dataset.receiverId ?? "";
+				const title = titleInput?.value.trim() ?? "";
+				const detail = detailInput?.value.trim() ?? "";
+
+				if (!this.state.user || !receiverId) {
+					this.showToast("送信できませんでした", "error");
+					return;
+				}
+
+				if (!title || !detail) {
+					this.showToast("件名と内容を入力してください", "error");
+					return;
+				}
+
+				sendFeedbackBtn.disabled = true;
+				try {
+					await createFeedback(this.apiClient, receiverId, title, detail);
+					if (titleInput) titleInput.value = "";
+					if (detailInput) detailInput.value = "";
+					this.showToast("送信しました");
+				} catch (err) {
+					this.showToast((err as Error).message, "error");
+				} finally {
+					sendFeedbackBtn.disabled = false;
+				}
+			});
+		}
 	}
 
 	renderLogin() {
 		const signedIn = this.state.user !== null;
+		const params = new URLSearchParams(window.location.search);
+		const nextPath = params.get("next");
+		const redirectPath = nextPath && nextPath.startsWith("/") ? nextPath : "/my";
+		if (signedIn) {
+			utils.navigateTo(redirectPath);
+			return;
+		}
 		this.setContent(`
 		<div class="row justify-content-center">
 			<div class="col-md-6 col-lg-5">
@@ -1222,7 +1313,7 @@ export class App {
 			try {
 				await signInWithGoogle(this.firebase);
 				this.showToast("ログインしました");
-				utils.navigateTo("/my");
+				utils.navigateTo(redirectPath);
 			} catch (err) {
 				this.showToast((err as Error).message, "error");
 			}

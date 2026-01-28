@@ -22,3 +22,12 @@ export interface ContentRecord {
 	createdAt?: Timestamp | null;
 	updatedAt?: Timestamp | null;
 }
+
+export interface FeedbackRecord {
+	id: string;
+	senderId: string;
+	receiverId: string;
+	title: string;
+	detail: string;
+	createdAt: Timestamp;
+}

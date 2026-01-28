@@ -1,4 +1,5 @@
 import { App } from "../App";
+import { Timestamp } from "@google-cloud/firestore";
 import { Context } from "../Context";
 import BaseController from "./BaseController";
 import * as validators from "express-validator";
@@ -25,6 +26,13 @@ interface GetParams {
 
 interface ListContentsParams {
 	id: string;
+}
+
+interface CreateFeedbackParams {
+	authorization: string;
+	id: string;
+	title: string;
+	detail: string;
 }
 
 export class UsersController extends BaseController {
@@ -61,6 +69,23 @@ export class UsersController extends BaseController {
 	register(basePath: string): Router {
 		const router = super.register(basePath);
 		this.registerRoute(router, "GET", "/:id/contents", this.listUserContents, [new fw.params.StringIdValidator()]);
+		this.registerRoute(router, "POST", "/:id/feedbacks", this.createFeedback, [
+			fw.params.InstantValidator(
+				[
+					params.headerBearerTokenValidator(),
+					validators.param("id").isString().notEmpty(),
+					validators.body("title").isString().notEmpty(),
+					validators.body("detail").isString().notEmpty(),
+				],
+				(context) =>
+					({
+						authorization: context.req.headers.authorization,
+						id: context.req.params.id,
+						title: context.req.body.title,
+						detail: context.req.body.detail,
+					}) as CreateFeedbackParams,
+			),
+		]);
 		return router;
 	}
 
@@ -105,5 +130,31 @@ export class UsersController extends BaseController {
 	async listUserContents(context: Context) {
 		const p = context.params as ListContentsParams;
 		return resolvers.contents.listContents(this.app.firestore, p.id);
+	}
+
+	async createFeedback(context: Context) {
+		const p = context.params as CreateFeedbackParams;
+		const verifyResult = await this.verify(p.authorization);
+		if (p.id === verifyResult.uid) {
+			throw new fw.types.BadRequest("不正なリクエストです");
+		}
+
+		const feedbackDoc = this.app.firestore
+			.collection("users")
+			.doc(verifyResult.uid)
+			.collection("myFeedbacks")
+			.doc();
+
+		await feedbackDoc.set({
+			receiverId: p.id,
+			senderId: verifyResult.uid,
+			title: p.title,
+			detail: p.detail,
+			createdAt: Timestamp.now(),
+		});
+
+		return {
+			feedbackId: feedbackDoc.id,
+		};
 	}
 }

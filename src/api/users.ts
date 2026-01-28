@@ -6,7 +6,7 @@ export async function createUser(client: Client, name: string) {
 }
 
 export async function createFeedback(client: Client, receiverId: string, title: string, detail: string) {
-	return client.callWithAuthorization<{ feedbackId: string }>(
+	return client.callWithAuthorization<{ result: "ok" }>(
 		"POST",
 		`/users/${encodeURIComponent(receiverId)}/feedbacks`,
 		JSON.stringify({ title, detail }),

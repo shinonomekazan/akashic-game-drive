@@ -1,5 +1,4 @@
 import { App } from "../App";
-import { Timestamp } from "@google-cloud/firestore";
 import { Context } from "../Context";
 import BaseController from "./BaseController";
 import * as validators from "express-validator";
@@ -7,7 +6,7 @@ import * as fw from "../fw";
 import * as params from "../params";
 import { Router } from "express";
 import * as resolvers from "../resolvers";
-import { storeUser, updateUser } from "../stores";
+import { storeFeedback, storeUser, updateUser } from "../stores";
 
 interface RegisterParams {
 	name: string;
@@ -139,22 +138,15 @@ export class UsersController extends BaseController {
 			throw new fw.types.BadRequest("不正なリクエストです");
 		}
 
-		const feedbackDoc = this.app.firestore
-			.collection("users")
-			.doc(verifyResult.uid)
-			.collection("myFeedbacks")
-			.doc();
-
-		await feedbackDoc.set({
+		await storeFeedback(this.app.firestore, {
 			receiverId: p.id,
 			senderId: verifyResult.uid,
 			title: p.title,
 			detail: p.detail,
-			createdAt: Timestamp.now(),
 		});
 
 		return {
-			feedbackId: feedbackDoc.id,
+			result: "ok",
 		};
 	}
 }

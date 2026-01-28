@@ -1,4 +1,4 @@
-import { ContentRecord, UserProfile } from "../types";
+import { ContentRecord, FeedbackRecord, UserProfile } from "../types";
 import { Firestore, Timestamp } from "@google-cloud/firestore";
 import { eraseUndefined } from "../utils";
 import * as fw from "../fw";
@@ -96,4 +96,17 @@ export function updateUser(firestore: Firestore, user: Omit<UserProfile, "create
 			}),
 		);
 	});
+}
+
+export function storeFeedback(firestore: Firestore, feedback: Omit<FeedbackRecord, "id" | "createdAt">) {
+	const feedbackDoc = firestore.collection("users").doc(feedback.senderId).collection("myFeedbacks").doc();
+	return feedbackDoc.set(
+		eraseUndefined({
+			receiverId: feedback.receiverId,
+			senderId: feedback.senderId,
+			title: feedback.title,
+			detail: feedback.detail,
+			createdAt: Timestamp.now(),
+		}),
+	);
 }

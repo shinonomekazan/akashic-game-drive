@@ -1134,11 +1134,11 @@ export class App {
 					<form class="d-grid gap-3">
 						<div>
 							<label class="form-label" for="feedback-title">件名</label>
-							<input id="feedback-title" name="title" class="form-control" type="text" />
+							<input id="feedback-title" name="title" class="form-control" type="text" required/>
 						</div>
 						<div>
 							<label class="form-label" for="feedback-detail">内容</label>
-							<textarea id="feedback-detail" name="detail" class="form-control" rows="4"></textarea>
+							<textarea id="feedback-detail" name="detail" class="form-control" rows="4" required></textarea>
 						</div>
 						<div class="d-flex justify-content-center">
 							<button id="send-feedback" class="btn btn-primary" type="button" data-receiver-id="${utils.escapeHtml(

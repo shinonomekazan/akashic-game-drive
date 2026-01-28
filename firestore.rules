@@ -16,11 +16,11 @@ service cloud.firestore {
       allow write: if isOwner(userId);
 
       match /feedbacks/{feedbackId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId);
       }
 
       match /myFeedbacks/{feedbackId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId);
       }
     }
   }

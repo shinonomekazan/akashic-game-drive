@@ -1,5 +1,5 @@
-import { onDocumentCreated } from "firebase-functions/firestore";
-import { onObjectFinalized } from "firebase-functions/storage";
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onObjectFinalized } from "firebase-functions/v2/storage";
 import { handleStorageZipFinalize } from "../zipValidation";
 import { FeedbackRecord } from "../types";
 import { getFirebaseApp } from "../firebase";

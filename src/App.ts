@@ -1041,7 +1041,6 @@ export class App {
 					${feedbackLoginPromptHtml}
 				</div>
 			</div>
-			
 		`);
 
 		const ownerLinkEl = utils.qsStrict<HTMLAnchorElement>("#content-owner-link");

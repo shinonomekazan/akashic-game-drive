@@ -29,5 +29,6 @@ export interface FeedbackRecord {
 	receiverId: string;
 	title: string;
 	detail: string;
+	contentId?: string;
 	createdAt: Timestamp;
 }

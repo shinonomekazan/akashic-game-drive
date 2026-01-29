@@ -5,11 +5,17 @@ export async function createUser(client: Client, name: string) {
 	return client.callWithAuthorization<{ user: UserProfile }>("POST", "/users", JSON.stringify({ name }));
 }
 
-export async function createFeedback(client: Client, receiverId: string, title: string, detail: string) {
+export async function createFeedback(
+	client: Client,
+	receiverId: string,
+	title: string,
+	detail: string,
+	contentId?: string,
+) {
 	return client.callWithAuthorization<{ result: "ok" }>(
 		"POST",
 		`/users/${encodeURIComponent(receiverId)}/feedbacks`,
-		JSON.stringify({ title, detail }),
+		JSON.stringify({ title, detail, contentId }),
 	);
 }
 

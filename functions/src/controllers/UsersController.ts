@@ -32,6 +32,7 @@ interface CreateFeedbackParams {
 	id: string;
 	title: string;
 	detail: string;
+	contentId?: string;
 }
 
 export class UsersController extends BaseController {
@@ -75,6 +76,7 @@ export class UsersController extends BaseController {
 					validators.param("id").isString().notEmpty(),
 					validators.body("title").isString().notEmpty(),
 					validators.body("detail").isString().notEmpty(),
+					validators.body("contentId").optional().isString().notEmpty(),
 				],
 				(context) =>
 					({
@@ -82,6 +84,7 @@ export class UsersController extends BaseController {
 						id: context.req.params.id,
 						title: context.req.body.title,
 						detail: context.req.body.detail,
+						contentId: context.req.body.contentId,
 					}) as CreateFeedbackParams,
 			),
 		]);
@@ -143,6 +146,7 @@ export class UsersController extends BaseController {
 			senderId: verifyResult.uid,
 			title: p.title,
 			detail: p.detail,
+			contentId: p.contentId,
 		});
 
 		return {

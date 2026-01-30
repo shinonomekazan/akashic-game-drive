@@ -106,6 +106,7 @@ export function storeFeedback(firestore: Firestore, feedback: Omit<FeedbackRecor
 			senderId: feedback.senderId,
 			title: feedback.title,
 			detail: feedback.detail,
+			contentId: feedback.contentId,
 			createdAt: Timestamp.now(),
 		}),
 	);

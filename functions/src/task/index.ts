@@ -4,6 +4,7 @@ import { handleStorageZipFinalize } from "../zipValidation";
 import { FeedbackRecord } from "../types";
 import { getFirebaseApp } from "../firebase";
 import { getFirestore } from "firebase-admin/firestore";
+import { eraseUndefined } from "../utils";
 
 export const onZipUploaded = onObjectFinalized(
 	{ region: "asia-northeast1", timeoutSeconds: 300 },
@@ -25,12 +26,20 @@ export const onMyFeedbackCreated = onDocumentCreated(
 		const firebaseApp = await getFirebaseApp();
 		const firestore = getFirestore(firebaseApp);
 
-		await firestore.collection("users").doc(receiverId).collection("feedbacks").doc(snapshot.id).set({
-			receiverId,
-			senderId,
-			title: data.title,
-			detail: data.detail,
-			createdAt: data.createdAt,
-		});
+		await firestore
+			.collection("users")
+			.doc(receiverId)
+			.collection("feedbacks")
+			.doc(snapshot.id)
+			.set(
+				eraseUndefined({
+					receiverId,
+					senderId,
+					title: data.title,
+					detail: data.detail,
+					contentId: data.contentId,
+					createdAt: data.createdAt,
+				}),
+			);
 	},
 );

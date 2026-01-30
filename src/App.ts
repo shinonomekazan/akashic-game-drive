@@ -397,7 +397,12 @@ export class App {
 			void this.loadContentViewOwner(ownerId);
 		}
 
-		this.renderContentDetail(content, this.state.contentViewOwner);
+		const isOwnPage = this.state.user?.uid === ownerId;
+		const isSignedIn = this.state.user !== null;
+		this.renderContentDetail(content, this.state.contentViewOwner, {
+			showFeedbackForm: !isOwnPage && isSignedIn,
+			showFeedbackLoginPrompt: !isOwnPage && !isSignedIn,
+		});
 	}
 
 	async loadUserProfile() {
@@ -938,7 +943,14 @@ export class App {
 		});
 	}
 
-	renderContentDetail(content: ContentRecord, owner: UserProfile | null) {
+	renderContentDetail(
+		content: ContentRecord,
+		owner: UserProfile | null,
+		options: {
+			showFeedbackForm?: boolean;
+			showFeedbackLoginPrompt?: boolean;
+		} = {},
+	) {
 		const title = utils.escapeHtml(content.title);
 		const ownerName = utils.escapeHtml(owner?.name ?? "-");
 		const ownerLink = `<a id="content-owner-link" class="text-decoration-none text-reset" href="/users/${encodeURIComponent(
@@ -967,6 +979,44 @@ export class App {
 					<div id="content-files" class="small text-secondary">読み込み中...</div>
 				</div>`
 			: "";
+		const showFeedbackForm = options.showFeedbackForm ?? false;
+		const feedbackFormHtml = showFeedbackForm
+			? `
+			<div class="card shadow-sm mt-4">
+				<div class="card-body">
+					<h2 class="h6 mb-3">このユーザーにコメントを送る</h2>
+					<form class="d-grid gap-3">
+						<div>
+							<label class="form-label" for="feedback-title">件名</label>
+							<input id="feedback-title" name="title" class="form-control" type="text" required/>
+						</div>
+						<div>
+							<label class="form-label" for="feedback-detail">内容</label>
+							<textarea id="feedback-detail" name="detail" class="form-control" rows="4" required></textarea>
+						</div>
+						<div class="d-flex justify-content-center">
+							<button id="send-feedback" class="btn btn-primary" type="button">送信</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		`
+			: "";
+		const showFeedbackLoginPrompt = options.showFeedbackLoginPrompt ?? false;
+		const loginHref = `/login?next=${encodeURIComponent(window.location.pathname || "/")}${
+			utils.isDebugMode() ? "&debug=true" : ""
+		}`;
+		const feedbackLoginPromptHtml = showFeedbackLoginPrompt
+			? `
+			<div class="card shadow-sm mt-4">
+				<div class="card-body text-center text-secondary">
+					ログインしてコメントしてください。
+					<a class="text-decoration-none" href="${utils.escapeHtml(loginHref)}">ログイン</a>
+				</div>
+			</div>
+		`
+			: "";
+
 		this.setContent(`
 			<div class="row justify-content-center">
 				<div class="col-md-8 col-lg-6">
@@ -987,6 +1037,8 @@ export class App {
 							${downloadHtml}
 						</div>
 					</div>
+					${feedbackFormHtml}
+					${feedbackLoginPromptHtml}
 				</div>
 			</div>
 		`);
@@ -1011,6 +1063,39 @@ export class App {
 					},
 				});
 			}
+		}
+
+		const sendFeedbackBtn = utils.qs<HTMLButtonElement>("#send-feedback");
+		if (sendFeedbackBtn) {
+			sendFeedbackBtn.addEventListener("click", async () => {
+				const titleInput = utils.qs<HTMLInputElement>("#feedback-title");
+				const detailInput = utils.qs<HTMLTextAreaElement>("#feedback-detail");
+				const receiverId = content.ownerId;
+				const title = titleInput?.value.trim() ?? "";
+				const detail = detailInput?.value.trim() ?? "";
+
+				if (!this.state.user || !receiverId) {
+					this.showToast("送信できませんでした", "error");
+					return;
+				}
+
+				if (!title || !detail) {
+					this.showToast("件名と内容を入力してください", "error");
+					return;
+				}
+
+				sendFeedbackBtn.disabled = true;
+				try {
+					await createFeedback(this.apiClient, receiverId, title, detail, content.id);
+					if (titleInput) titleInput.value = "";
+					if (detailInput) detailInput.value = "";
+					this.showToast("送信しました");
+				} catch (err) {
+					this.showToast((err as Error).message, "error");
+				} finally {
+					sendFeedbackBtn.disabled = false;
+				}
+			});
 		}
 	}
 

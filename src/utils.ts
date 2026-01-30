@@ -1,3 +1,4 @@
+import { DocumentData, QueryDocumentSnapshot } from "firebase/firestore";
 import { ContentRecord, Route } from "./types";
 
 export function qs<T extends HTMLElement>(selector: string, element: HTMLElement | Document = document): T | null {
@@ -91,6 +92,9 @@ export function parseRoute(): Route {
 	if (path.startsWith("/my/edit")) {
 		return { name: "my-edit" };
 	}
+	if (path.startsWith("/my/feedbacks")) {
+		return { name: "my-feedbacks" };
+	}
 	if (path.startsWith("/my")) {
 		return { name: "my" };
 	}
@@ -156,4 +160,11 @@ export function getContentStateLabel(state: ContentRecord["state"]) {
 		case undefined:
 			return '<div class="alert alert-warning small mt-2">このコンテンツは現在処理中なため利用できません</div>';
 	}
+}
+
+export function withId<T>(doc: QueryDocumentSnapshot<DocumentData>): T {
+	return {
+		id: doc.id,
+		...doc.data(),
+	} as T;
 }

@@ -261,7 +261,7 @@ export class App {
 								const summaryBase = detailText || "-";
 								const summary =
 									summaryBase.length > feedbackSummaryLimit
-										? `${summaryBase.slice(0, feedbackSummaryLimit)}....`
+										? `${summaryBase.slice(0, feedbackSummaryLimit)}...`
 										: summaryBase;
 								const createdAtText = utils.formatTimestamp(feedback.createdAt);
 								const contentTitle = feedback.contentId
@@ -665,7 +665,7 @@ export class App {
 				contentsLoaded: true,
 				contentsLoading: false,
 			};
-			this.showToast((err as Error).message || "コンテンツの取得に失敗しました", "error");
+			this.showToast((err as Error).message || "フィードバックの取得に失敗しました", "error");
 		}
 	}
 
@@ -1363,7 +1363,7 @@ export class App {
 								const summaryBase = detailText || "-";
 								const summary =
 									summaryBase.length > feedbackSummaryLimit
-										? `${summaryBase.slice(0, feedbackSummaryLimit)}....`
+										? `${summaryBase.slice(0, feedbackSummaryLimit)}...`
 										: summaryBase;
 								const createdAtText = utils.formatTimestamp(feedback.createdAt);
 								const contentTitle = feedback.contentId
@@ -1534,11 +1534,6 @@ export class App {
 					<a class="text-decoration-none" href="${utils.escapeHtml(loginHref)}">ログイン</a>
 				</div>
 			</div>
-		`
-			: "";
-
-		const feedbackNoticeHtml = showFeedback
-			? `
 		`
 			: "";
 		this.setContent(`

@@ -257,7 +257,7 @@ export class App {
 						${feedbackPreview
 							.map((feedback) => {
 								const titleText = utils.escapeHtml(feedback.title || "-");
-								const detailText = (feedback.detail ?? "").replace(/\s+/g, " ").trim();
+								const detailText = feedback.detail.replace(/\s+/g, " ").trim();
 								const summaryBase = detailText || "-";
 								const summary =
 									summaryBase.length > feedbackSummaryLimit
@@ -1685,7 +1685,7 @@ export class App {
 				if (!feedback) return;
 				modalTitleEl.textContent = feedback.title;
 				modalDateEl.textContent = `作成日: ${utils.formatTimestamp(feedback.createdAt)}`;
-				const detailHtml = utils.escapeHtml(feedback.detail ?? "").replace(/\r?\n/g, "<br>");
+				const detailHtml = utils.escapeHtml(feedback.detail).replace(/\r?\n/g, "<br>");
 				modalDetailEl.innerHTML = detailHtml;
 				modal.show();
 			});

@@ -1,13 +1,14 @@
 import "bootstrap";
+import { Modal } from "bootstrap";
 import "./css/bootstrap.min.css";
 import { connectAuthEmulator } from "firebase/auth";
 import { signInWithGoogle, signOutCurrentUser, watchAuthChanges } from "./auth";
 import { initializeFirebase, type FirebaseInstance } from "./firebase";
 import { appConfig } from "./config";
 import type { AppConfig } from "./config.types";
-import type { AppState, ContentRecord, UserProfile } from "./types";
+import type { AppState, ContentRecord, FeedbackRecord, UserProfile } from "./types";
 import * as utils from "./utils";
-import { getUser } from "./resolvers";
+import { getUser, listFeedback } from "./resolvers";
 import { connectFirestoreEmulator } from "firebase/firestore";
 import { connectStorageEmulator, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Client } from "./api/client";
@@ -59,6 +60,9 @@ export class App {
 			contentViewOwner: null,
 			contentViewOwnerLoaded: false,
 			contentViewOwnerLoading: false,
+			feedbacks: [],
+			feedbackUsers: {},
+			myFeedbackDisplayCount: 10,
 		};
 		this.connectEmulatorIfDebug();
 	}
@@ -92,6 +96,9 @@ export class App {
 				contentViewOwner: null,
 				contentViewOwnerLoaded: false,
 				contentViewOwnerLoading: false,
+				feedbacks: [],
+				feedbackUsers: {},
+				myFeedbackDisplayCount: 10,
 			};
 			await this.render();
 		});
@@ -126,6 +133,9 @@ export class App {
 				break;
 			case "my-contents":
 				await this.renderMyContents();
+				break;
+			case "my-feedbacks":
+				await this.renderMyFeedbacks();
 				break;
 			case "content-edit":
 				await this.renderContentEdit();
@@ -186,11 +196,160 @@ export class App {
 		if (!this.state.contentsLoaded) {
 			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
 			await this.loadMyContents();
+			await this.loadMyFeedback();
 			await this.render();
 			return;
 		}
 
 		this.renderMyProfile();
+	}
+
+	async renderMyFeedbacks() {
+		const signedIn = this.state.user !== null;
+		if (!signedIn) {
+			utils.navigateTo("/login");
+			return;
+		}
+
+		if (this.state.profileLoading || this.state.contentsLoading) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			return;
+		}
+
+		if (!this.state.profileLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadUserProfile();
+			await this.render();
+			return;
+		}
+
+		if (this.state.needsProfile) {
+			this.renderProfileSetup();
+			return;
+		}
+
+		if (!this.state.contentsLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadMyContents();
+			await this.loadMyFeedback();
+			await this.render();
+			return;
+		}
+
+		const name = this.state.profile?.name ?? "-";
+		const safeName = utils.escapeHtml(name);
+		const nameLinkHtml = `<a id="my-page-link" class="text-decoration-none text-reset" href="/my">${safeName}</a>`;
+		const title = `${nameLinkHtml} もらったフィードバック`;
+		const displayCount = Math.max(10, this.state.myFeedbackDisplayCount);
+		const feedbackSummaryLimit = 64;
+		const feedbackUsers = this.state.feedbackUsers;
+		const contentTitleById = new Map(this.state.contents.map((content) => [content.id, content.title]));
+		const feedbackItems = this.state.feedbacks
+			.slice()
+			.sort((a, b) => utils.getTimestampMillis(b.createdAt) - utils.getTimestampMillis(a.createdAt));
+		const feedbackPreview = feedbackItems.slice(0, displayCount);
+		const hasMore = feedbackItems.length > displayCount;
+		const feedbackItemsHtml =
+			feedbackPreview.length === 0
+				? '<div class="agd-empty">フィードバックはまだありません。</div>'
+				: `
+					<div class="d-grid gap-3">
+						${feedbackPreview
+							.map((feedback) => {
+								const titleText = utils.escapeHtml(feedback.title || "-");
+								const detailText = feedback.detail.replace(/\s+/g, " ").trim();
+								const summaryBase = detailText || "-";
+								const summary =
+									summaryBase.length > feedbackSummaryLimit
+										? `${summaryBase.slice(0, feedbackSummaryLimit)}...`
+										: summaryBase;
+								const createdAtText = utils.formatTimestamp(feedback.createdAt);
+								const contentTitle = feedback.contentId
+									? (contentTitleById.get(feedback.contentId) ?? "")
+									: "";
+								const contentTitleHtml = contentTitle
+									? `<div class="text-secondary small">${utils.escapeHtml(
+											contentTitle,
+										)} に対して</div>`
+									: "";
+								const senderProfile = feedbackUsers[feedback.senderId ?? ""];
+								const avatarUrl = senderProfile?.photoURL
+									? utils.escapeHtml(senderProfile.photoURL)
+									: "/image/icon_default.png";
+								return `
+									<div class="d-flex gap-3 align-items-start">
+										<img class="agd-feedback-avatar rounded" src="${avatarUrl}" alt="sender" />
+										<div class="flex-grow-1">
+											${contentTitleHtml}
+											<div class="fw-semibold">
+												<a class="text-decoration-none text-dark js-feedback-title" href="#" data-feedback-id="${utils.escapeHtml(
+													feedback.id,
+												)}">${titleText}</a>
+											</div>
+											<div class="text-secondary small">${utils.escapeHtml(summary)}</div>
+											<div class="text-secondary small">作成日: ${createdAtText}</div>
+										</div>
+									</div>
+								`;
+							})
+							.join("")}
+					</div>
+				`;
+		const showMoreHtml = hasMore
+			? `
+				<div class="text-center mt-3">
+					<button id="feedback-show-more" class="btn btn-link text-dark text-decoration-underline" type="button">もっと見る</button>
+				</div>
+			`
+			: "";
+		const feedbackModalHtml = `
+			<div class="modal fade" id="feedback-modal" tabindex="-1" aria-hidden="true">
+				<div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h5 class="modal-title" id="feedback-modal-title">フィードバック</h5>
+							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+						</div>
+						<div class="modal-body">
+							<div class="text-secondary small mb-2" id="feedback-modal-date"></div>
+							<div id="feedback-modal-detail" class="agd-description"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		`;
+		this.setContent(`
+			<div class="agd-my-header">
+				<div class="agd-user-name">${title}</div>
+			</div>
+			<div class="card shadow-sm">
+				<div class="card-body">
+					<div class="d-flex align-items-center justify-content-between mb-3">
+						<h2 class="h6 mb-0">フィードバック一覧</h2>
+					</div>
+					${feedbackItemsHtml}
+					${showMoreHtml}
+				</div>
+			</div>
+			${feedbackModalHtml}
+		`);
+
+		this.bindFeedbackModal();
+		const myPageLink = utils.qs<HTMLAnchorElement>("#my-page-link");
+		if (myPageLink) {
+			myPageLink.addEventListener("click", (event) => {
+				event.preventDefault();
+				utils.navigateTo("/my");
+			});
+		}
+		const showMoreBtn = utils.qs<HTMLButtonElement>("#feedback-show-more");
+		if (showMoreBtn) {
+			showMoreBtn.addEventListener("click", async () => {
+				const nextCount = Math.min(this.state.myFeedbackDisplayCount + 10, feedbackItems.length);
+				this.state = { ...this.state, myFeedbackDisplayCount: nextCount };
+				await this.render();
+			});
+		}
 	}
 
 	async renderUserPage() {
@@ -467,6 +626,49 @@ export class App {
 		}
 	}
 
+	async loadMyFeedback() {
+		const currentUser = this.state.user;
+		if (!currentUser || this.state.contentsLoading) {
+			return;
+		}
+		this.state = { ...this.state, contentsLoading: true };
+		try {
+			const feedbackDocs = await listFeedback(this.firebase.firestore, currentUser.uid);
+			const feedbacks = feedbackDocs.docs.map((doc) => utils.withId<FeedbackRecord>(doc));
+			const senderIds = Array.from(
+				new Set(
+					feedbacks
+						.map((feedback) => feedback.senderId)
+						.filter((senderId): senderId is string => Boolean(senderId)),
+				),
+			);
+			const feedbackUsers: Record<string, UserProfile | null> = {};
+			await Promise.all(
+				senderIds.map(async (senderId) => {
+					try {
+						feedbackUsers[senderId] = await getUser(this.firebase.firestore, senderId);
+					} catch {
+						feedbackUsers[senderId] = null;
+					}
+				}),
+			);
+			this.state = {
+				...this.state,
+				feedbacks,
+				feedbackUsers: { ...this.state.feedbackUsers, ...feedbackUsers },
+				contentsLoaded: true,
+				contentsLoading: false,
+			};
+		} catch (err) {
+			this.state = {
+				...this.state,
+				contentsLoaded: true,
+				contentsLoading: false,
+			};
+			this.showToast((err as Error).message || "フィードバックの取得に失敗しました", "error");
+		}
+	}
+
 	async loadUserPageProfile(userId: string) {
 		if (this.state.userPageProfileLoading) {
 			return;
@@ -576,7 +778,7 @@ export class App {
 	}
 
 	renderMyProfile() {
-		this.renderMyContent(this.state.profile, this.state.contents);
+		this.renderMyContent(this.state.profile, this.state.contents, {}, this.state.feedbacks);
 	}
 
 	renderProfileSetup() {
@@ -1110,6 +1312,7 @@ export class App {
 			showFeedbackForm?: boolean;
 			showFeedbackLoginPrompt?: boolean;
 		} = {},
+		feedbacks?: FeedbackRecord[],
 	) {
 		const allowEdit = options.allowEdit ?? true;
 		const showActions = options.showActions ?? true;
@@ -1121,7 +1324,11 @@ export class App {
 		}`;
 		const showLogout = showActions && this.state.user !== null;
 		const showEditProfile = showActions && allowEdit;
+		const showFeedback = showActions && allowEdit;
+		const showFeedbackList = showFeedback && feedbacks !== undefined;
 		const showCreateButton = showCreate && this.state.user !== null;
+		const feedbackUsers = this.state.feedbackUsers;
+		const contentTitleById = new Map(contents.map((content) => [content.id, content.title]));
 		const nameLink = options.nameLink ?? null;
 		const currentUserId = profile?.uid ?? this.state.user?.uid ?? "";
 		const name = profile?.name ?? "-";
@@ -1139,6 +1346,90 @@ export class App {
 				<span>ユーザー情報が未登録です。バックエンドで作成してください。</span>
 			</div>
 		`;
+		const feedbackSummaryLimit = 32;
+		const feedbackItems = (feedbacks ?? [])
+			.slice()
+			.sort((a, b) => utils.getTimestampMillis(b.createdAt) - utils.getTimestampMillis(a.createdAt));
+		const feedbackPreview = feedbackItems.slice(0, 5);
+		const feedbackItemsHtml =
+			feedbackPreview.length === 0
+				? '<div class="agd-empty">フィードバックはまだありません。</div>'
+				: `
+					<div class="d-grid gap-3">
+						${feedbackPreview
+							.map((feedback) => {
+								const title = utils.escapeHtml(feedback.title || "-");
+								const detailText = (feedback.detail ?? "").replace(/\s+/g, " ").trim();
+								const summaryBase = detailText || "-";
+								const summary =
+									summaryBase.length > feedbackSummaryLimit
+										? `${summaryBase.slice(0, feedbackSummaryLimit)}...`
+										: summaryBase;
+								const createdAtText = utils.formatTimestamp(feedback.createdAt);
+								const contentTitle = feedback.contentId
+									? (contentTitleById.get(feedback.contentId) ?? "")
+									: "";
+								const contentTitleHtml = contentTitle
+									? `<div class="text-secondary small">${utils.escapeHtml(
+											contentTitle,
+										)} に対して</div>`
+									: "";
+								const senderProfile = feedbackUsers[feedback.senderId ?? ""];
+								const avatarUrl = senderProfile?.photoURL
+									? utils.escapeHtml(senderProfile.photoURL)
+									: "/image/icon_default.png";
+								return `
+									<div class="d-flex gap-3 align-items-start">
+										<img class="agd-feedback-avatar rounded" src="${avatarUrl}" alt="sender" />
+										<div class="flex-grow-1">
+											${contentTitleHtml}
+											<div class="fw-semibold">
+												<a class="text-decoration-none text-dark js-feedback-title" href="#" data-feedback-id="${utils.escapeHtml(
+													feedback.id,
+												)}">${title}</a>
+											</div>
+											<div class="text-secondary small">${utils.escapeHtml(summary)}</div>
+											<div class="text-secondary small">作成日: ${createdAtText}</div>
+										</div>
+									</div>
+								`;
+							})
+							.join("")}
+					</div>
+				`;
+		const feedbackSectionHtml = showFeedbackList
+			? `
+				<div class="card shadow-sm mt-4 mb-4">
+					<div class="card-body">
+						<div class="d-flex align-items-center justify-content-between mb-3">
+							<h2 class="h6 mb-0">もらったフィードバック</h2>
+						</div>
+						${feedbackItemsHtml}
+						<div class="text-center mt-3">
+							<button id="my-feedbacks-link" class="btn btn-link text-dark text-decoration-underline" type="button">もっと見る</button>
+						</div>
+					</div>
+				</div>
+			`
+			: "";
+		const feedbackModalHtml = showFeedbackList
+			? `
+				<div class="modal fade" id="feedback-modal" tabindex="-1" aria-hidden="true">
+					<div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+						<div class="modal-content">
+							<div class="modal-header">
+								<h5 class="modal-title" id="feedback-modal-title">フィードバック</h5>
+								<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+							</div>
+							<div class="modal-body">
+								<div class="text-secondary small mb-2" id="feedback-modal-date"></div>
+								<div id="feedback-modal-detail" class="agd-description"></div>
+							</div>
+						</div>
+					</div>
+				</div>
+			`
+			: "";
 		const contentsHtml =
 			contents.length === 0
 				? '<div class="agd-empty">コンテンツはまだありません。</div>'
@@ -1245,7 +1536,6 @@ export class App {
 			</div>
 		`
 			: "";
-
 		this.setContent(`
 			${profileNotice}
 			<div class="agd-my-header">
@@ -1264,8 +1554,10 @@ export class App {
 					${contentsHtml}
 				</div>
 			</div>
+			${feedbackSectionHtml}
 			${feedbackFormHtml}
 			${feedbackLoginPromptHtml}
+			${feedbackModalHtml}
 		`);
 
 		this.bindMyActions();
@@ -1312,6 +1604,13 @@ export class App {
 			});
 		}
 
+		const myFeedbacksLink = utils.qs<HTMLButtonElement>("#my-feedbacks-link");
+		if (myFeedbacksLink) {
+			myFeedbacksLink.addEventListener("click", () => {
+				utils.navigateTo("/my/feedbacks");
+			});
+		}
+
 		const contentEditButtons = utils.qsStrictAll<HTMLButtonElement>(this.rootEl, ".js-edit-content");
 		contentEditButtons.forEach((button) => {
 			const contentId = button.dataset.contentId;
@@ -1330,6 +1629,8 @@ export class App {
 				utils.navigateTo(`/contents/${encodeURIComponent(contentId)}`);
 			});
 		});
+
+		this.bindFeedbackModal();
 
 		const sendFeedbackBtn = utils.qs<HTMLButtonElement>("#send-feedback");
 		if (sendFeedbackBtn) {
@@ -1363,6 +1664,32 @@ export class App {
 				}
 			});
 		}
+	}
+
+	bindFeedbackModal() {
+		const feedbackTitleLinks = utils.qsStrictAll<HTMLAnchorElement>(this.rootEl, ".js-feedback-title");
+		if (feedbackTitleLinks.length === 0) {
+			return;
+		}
+		const modalEl = utils.qs<HTMLElement>("#feedback-modal");
+		const modalTitleEl = utils.qs<HTMLElement>("#feedback-modal-title");
+		const modalDateEl = utils.qs<HTMLElement>("#feedback-modal-date");
+		const modalDetailEl = utils.qs<HTMLElement>("#feedback-modal-detail");
+		if (!modalEl || !modalTitleEl || !modalDateEl || !modalDetailEl) return;
+		const modal = Modal.getOrCreateInstance(modalEl);
+		feedbackTitleLinks.forEach((link) => {
+			link.addEventListener("click", (event) => {
+				event.preventDefault();
+				const feedbackId = link.dataset.feedbackId ?? "";
+				const feedback = this.state.feedbacks.find((item) => item.id === feedbackId);
+				if (!feedback) return;
+				modalTitleEl.textContent = feedback.title;
+				modalDateEl.textContent = `作成日: ${utils.formatTimestamp(feedback.createdAt)}`;
+				const detailHtml = utils.escapeHtml(feedback.detail).replace(/\r?\n/g, "<br>");
+				modalDetailEl.innerHTML = detailHtml;
+				modal.show();
+			});
+		});
 	}
 
 	renderLogin() {

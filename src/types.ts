@@ -24,12 +24,23 @@ export interface ContentRecord {
 	updatedAt?: Timestamp | null;
 }
 
+export interface FeedbackRecord {
+	id: string;
+	senderId: string;
+	receiverId: string;
+	title: string;
+	detail: string;
+	contentId?: string;
+	createdAt: Timestamp;
+}
+
 export type Route =
 	| { name: "top" }
 	| { name: "login" }
 	| { name: "my" }
 	| { name: "my-edit" }
 	| { name: "my-contents" }
+	| { name: "my-feedbacks" }
 	| { name: "content-view"; contentId: string }
 	| { name: "content-edit"; contentId: string }
 	| { name: "user"; userId: string };
@@ -60,4 +71,7 @@ export interface AppState {
 	contentViewOwner: UserProfile | null;
 	contentViewOwnerLoaded: boolean;
 	contentViewOwnerLoading: boolean;
+	feedbacks: FeedbackRecord[];
+	feedbackUsers: Record<string, UserProfile | null>;
+	myFeedbackDisplayCount: number;
 }

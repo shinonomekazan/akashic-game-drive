@@ -157,7 +157,7 @@ export class App {
 			case "my-feedbacks":
 				await this.renderMyFeedbacks();
 				break;
-			case "my-sent-feedbacks":
+			case "my-myFeedbacks":
 				await this.renderMySentFeedbacks();
 				break;
 			case "content-edit":

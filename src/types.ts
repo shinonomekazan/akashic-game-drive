@@ -41,7 +41,7 @@ export type Route =
 	| { name: "my-edit" }
 	| { name: "my-contents" }
 	| { name: "my-feedbacks" }
-	| { name: "my-sent-feedbacks" }
+	| { name: "my-myFeedbacks" }
 	| { name: "content-view"; contentId: string }
 	| { name: "content-edit"; contentId: string }
 	| { name: "user"; userId: string };

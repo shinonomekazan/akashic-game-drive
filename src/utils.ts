@@ -93,7 +93,7 @@ export function parseRoute(): Route {
 		return { name: "my-edit" };
 	}
 	if (path.startsWith("/my/myFeedbacks")) {
-		return { name: "my-sent-feedbacks" };
+		return { name: "my-myFeedbacks" };
 	}
 	if (path.startsWith("/my/feedbacks")) {
 		return { name: "my-feedbacks" };

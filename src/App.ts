@@ -8,7 +8,7 @@ import { appConfig } from "./config";
 import type { AppConfig } from "./config.types";
 import type { AppState, ContentRecord, FeedbackRecord, UserProfile } from "./types";
 import * as utils from "./utils";
-import { getUser, listFeedback } from "./resolvers";
+import { getUser, listFeedback, listMyFeedbacks } from "./resolvers";
 import { connectFirestoreEmulator } from "firebase/firestore";
 import { connectStorageEmulator, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Client } from "./api/client";
@@ -61,8 +61,15 @@ export class App {
 			contentViewOwnerLoaded: false,
 			contentViewOwnerLoading: false,
 			feedbacks: [],
+			myFeedbacks: [],
+			myFeedbacksLoaded: false,
+			feedbacksLimit: null,
+			myFeedbacksLimit: null,
 			feedbackUsers: {},
+			feedbackContentTitles: {},
 			myFeedbackDisplayCount: 10,
+			mySentFeedbackDisplayCount: 10,
+			refreshMyFeedbacks: false,
 		};
 		this.connectEmulatorIfDebug();
 	}
@@ -97,14 +104,27 @@ export class App {
 				contentViewOwnerLoaded: false,
 				contentViewOwnerLoading: false,
 				feedbacks: [],
+				myFeedbacks: [],
+				myFeedbacksLoaded: false,
+				feedbacksLimit: null,
+				myFeedbacksLimit: null,
 				feedbackUsers: {},
+				feedbackContentTitles: {},
 				myFeedbackDisplayCount: 10,
+				mySentFeedbackDisplayCount: 10,
+				refreshMyFeedbacks: false,
 			};
 			await this.render();
 		});
 
 		window.addEventListener("popstate", async () => {
-			this.state = { ...this.state, route: utils.parseRoute() };
+			const nextRoute = utils.parseRoute();
+			const shouldRefreshMy = nextRoute.name === "my" && this.state.route.name !== "my";
+			this.state = {
+				...this.state,
+				route: nextRoute,
+				refreshMyFeedbacks: shouldRefreshMy,
+			};
 			await this.render();
 		});
 
@@ -136,6 +156,9 @@ export class App {
 				break;
 			case "my-feedbacks":
 				await this.renderMyFeedbacks();
+				break;
+			case "my-sent-feedbacks":
+				await this.renderMySentFeedbacks();
 				break;
 			case "content-edit":
 				await this.renderContentEdit();
@@ -196,7 +219,31 @@ export class App {
 		if (!this.state.contentsLoaded) {
 			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
 			await this.loadMyContents();
-			await this.loadMyFeedback();
+			await this.loadMyFeedback(5);
+			await this.loadMySentFeedback(5);
+			await this.render();
+			return;
+		}
+
+		if (!this.state.myFeedbacksLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadMySentFeedback(5);
+			await this.render();
+			return;
+		}
+
+		if (this.state.refreshMyFeedbacks) {
+			await this.loadMyFeedback(5);
+			await this.loadMySentFeedback(5);
+			this.state = { ...this.state, refreshMyFeedbacks: false };
+			await this.render();
+			return;
+		}
+
+		if (this.state.feedbacksLimit !== 5 || this.state.myFeedbacksLimit !== 5) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadMyFeedback(5);
+			await this.loadMySentFeedback(5);
 			await this.render();
 			return;
 		}
@@ -232,6 +279,14 @@ export class App {
 			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
 			await this.loadMyContents();
 			await this.loadMyFeedback();
+			await this.render();
+			return;
+		}
+
+		if (this.state.feedbacksLimit !== null) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadMyFeedback();
+			this.state = { ...this.state, myFeedbackDisplayCount: 10 };
 			await this.render();
 			return;
 		}
@@ -284,7 +339,7 @@ export class App {
 											<div class="fw-semibold">
 												<a class="text-decoration-none text-dark js-feedback-title" href="#" data-feedback-id="${utils.escapeHtml(
 													feedback.id,
-												)}">${titleText}</a>
+												)}" data-feedback-type="received">${titleText}</a>
 											</div>
 											<div class="text-secondary small">${utils.escapeHtml(summary)}</div>
 											<div class="text-secondary small">作成日: ${createdAtText}</div>
@@ -345,11 +400,211 @@ export class App {
 		const showMoreBtn = utils.qs<HTMLButtonElement>("#feedback-show-more");
 		if (showMoreBtn) {
 			showMoreBtn.addEventListener("click", async () => {
-				const nextCount = Math.min(this.state.myFeedbackDisplayCount + 10, feedbackItems.length);
+				const nextCount = Math.min(this.state.myFeedbackDisplayCount + 10, this.state.feedbacks.length);
 				this.state = { ...this.state, myFeedbackDisplayCount: nextCount };
 				await this.render();
 			});
 		}
+	}
+
+	async renderMySentFeedbacks() {
+		const signedIn = this.state.user !== null;
+		if (!signedIn) {
+			utils.navigateTo("/login");
+			return;
+		}
+
+		if (this.state.profileLoading || this.state.contentsLoading) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			return;
+		}
+
+		if (!this.state.profileLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadUserProfile();
+			await this.render();
+			return;
+		}
+
+		if (this.state.needsProfile) {
+			this.renderProfileSetup();
+			return;
+		}
+
+		if (!this.state.contentsLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadMyContents();
+			await this.loadMyFeedback();
+			await this.loadMySentFeedback();
+			await this.render();
+			return;
+		}
+
+		if (!this.state.myFeedbacksLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadMySentFeedback();
+			await this.render();
+			return;
+		}
+
+		if (this.state.myFeedbacksLimit !== null) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadMySentFeedback();
+			this.state = { ...this.state, mySentFeedbackDisplayCount: 10 };
+			await this.render();
+			return;
+		}
+
+		const name = this.state.profile?.name ?? "-";
+		const safeName = utils.escapeHtml(name);
+		const nameLinkHtml = `<a id="my-page-link" class="text-decoration-none text-reset" href="/my">${safeName}</a>`;
+		const title = `${nameLinkHtml} 送ったフィードバック`;
+		const displayCount = Math.max(10, this.state.mySentFeedbackDisplayCount);
+		const feedbackSummaryLimit = 64;
+		const feedbackUsers = this.state.feedbackUsers;
+		const feedbackContentTitles = this.state.feedbackContentTitles;
+		const feedbackItems = this.state.myFeedbacks
+			.slice()
+			.sort((a, b) => utils.getTimestampMillis(b.createdAt) - utils.getTimestampMillis(a.createdAt));
+		const feedbackPreview = feedbackItems.slice(0, displayCount);
+		const hasMore = feedbackItems.length > displayCount;
+		const feedbackItemsHtml =
+			feedbackPreview.length === 0
+				? '<div class="agd-empty">送ったフィードバックはまだありません。</div>'
+				: `
+					<div class="d-grid gap-3">
+						${feedbackPreview
+							.map((feedback) => {
+								const titleText = utils.escapeHtml(feedback.title || "-");
+								const detailText = (feedback.detail ?? "").replace(/\s+/g, " ").trim();
+								const summaryBase = detailText || "-";
+								const summary =
+									summaryBase.length > feedbackSummaryLimit
+										? `${summaryBase.slice(0, feedbackSummaryLimit)}...`
+										: summaryBase;
+								const createdAtText = utils.formatTimestamp(feedback.createdAt);
+								const contentTitle = feedback.contentId
+									? (feedbackContentTitles[feedback.contentId] ?? "")
+									: "";
+								const contentTitleLabel = contentTitle || "コンテンツ";
+								const contentHref = feedback.contentId
+									? `/contents/${encodeURIComponent(feedback.contentId)}`
+									: "";
+								const contentTitleHtml = feedback.contentId
+									? `<div class="text-secondary small"><a class="text-decoration-none text-secondary js-content-link" href="${utils.escapeHtml(
+											contentHref,
+										)}" data-content-id="${utils.escapeHtml(
+											feedback.contentId,
+										)}">${utils.escapeHtml(contentTitleLabel)}</a> に対して</div>`
+									: "";
+								const receiverProfile = feedbackUsers[feedback.receiverId];
+								const avatarUrl = receiverProfile?.photoURL
+									? utils.escapeHtml(receiverProfile.photoURL)
+									: "/image/icon_default.png";
+								const receiverHref = feedback.receiverId
+									? `/users/${encodeURIComponent(feedback.receiverId)}`
+									: "";
+								const avatarHtml = receiverHref
+									? `<a class="text-decoration-none js-user-link" href="${utils.escapeHtml(
+											receiverHref,
+										)}" data-user-id="${utils.escapeHtml(
+											feedback.receiverId,
+										)}"><img class="agd-feedback-avatar rounded" src="${avatarUrl}" alt="receiver" /></a>`
+									: `<img class="agd-feedback-avatar rounded" src="${avatarUrl}" alt="receiver" />`;
+								return `
+									<div class="d-flex gap-3 align-items-start">
+										${avatarHtml}
+										<div class="flex-grow-1">
+											${contentTitleHtml}
+											<div class="fw-semibold">
+												<a class="text-decoration-none text-dark js-feedback-title" href="#" data-feedback-id="${utils.escapeHtml(
+													feedback.id,
+												)}" data-feedback-type="sent">${titleText}</a>
+											</div>
+											<div class="text-secondary small">${utils.escapeHtml(summary)}</div>
+											<div class="text-secondary small">作成日: ${createdAtText}</div>
+										</div>
+									</div>
+								`;
+							})
+							.join("")}
+					</div>
+				`;
+		const showMoreHtml = hasMore
+			? `
+				<div class="text-center mt-3">
+					<button id="my-sent-feedback-show-more" class="btn btn-link text-dark text-decoration-underline" type="button">もっと見る</button>
+				</div>
+			`
+			: "";
+		const feedbackModalHtml = `
+			<div class="modal fade" id="feedback-modal" tabindex="-1" aria-hidden="true">
+				<div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h5 class="modal-title" id="feedback-modal-title">フィードバック</h5>
+							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+						</div>
+						<div class="modal-body">
+							<div class="text-secondary small mb-2" id="feedback-modal-date"></div>
+							<div id="feedback-modal-detail" class="agd-description"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		`;
+		this.setContent(`
+			<div class="agd-my-header">
+				<div class="agd-user-name">${title}</div>
+			</div>
+			<div class="card shadow-sm">
+				<div class="card-body">
+					<div class="d-flex align-items-center justify-content-between mb-3">
+						<h2 class="h6 mb-0">送ったフィードバック一覧</h2>
+					</div>
+					${feedbackItemsHtml}
+					${showMoreHtml}
+				</div>
+			</div>
+			${feedbackModalHtml}
+		`);
+
+		this.bindFeedbackModal();
+		const myPageLink = utils.qs<HTMLAnchorElement>("#my-page-link");
+		if (myPageLink) {
+			myPageLink.addEventListener("click", (event) => {
+				event.preventDefault();
+				utils.navigateTo("/my");
+			});
+		}
+		const showMoreBtn = utils.qs<HTMLButtonElement>("#my-sent-feedback-show-more");
+		if (showMoreBtn) {
+			showMoreBtn.addEventListener("click", async () => {
+				const nextCount = Math.min(this.state.mySentFeedbackDisplayCount + 10, this.state.myFeedbacks.length);
+				this.state = { ...this.state, mySentFeedbackDisplayCount: nextCount };
+				await this.render();
+			});
+		}
+
+		const userLinks = utils.qsStrictAll<HTMLAnchorElement>(this.rootEl, ".js-user-link");
+		userLinks.forEach((link) => {
+			const userId = link.dataset.userId;
+			if (!userId) return;
+			link.addEventListener("click", (event) => {
+				event.preventDefault();
+				utils.navigateTo(`/users/${encodeURIComponent(userId)}`);
+			});
+		});
+
+		const contentLinks = utils.qsStrictAll<HTMLAnchorElement>(this.rootEl, ".js-content-link");
+		contentLinks.forEach((link) => {
+			const contentId = link.dataset.contentId;
+			if (!contentId) return;
+			link.addEventListener("click", (event) => {
+				event.preventDefault();
+				utils.navigateTo(`/contents/${encodeURIComponent(contentId)}`);
+			});
+		});
 	}
 
 	async renderUserPage() {
@@ -626,14 +881,14 @@ export class App {
 		}
 	}
 
-	async loadMyFeedback() {
+	async loadMyFeedback(limitCount?: number) {
 		const currentUser = this.state.user;
 		if (!currentUser || this.state.contentsLoading) {
 			return;
 		}
 		this.state = { ...this.state, contentsLoading: true };
 		try {
-			const feedbackDocs = await listFeedback(this.firebase.firestore, currentUser.uid);
+			const feedbackDocs = await listFeedback(this.firebase.firestore, currentUser.uid, limitCount);
 			const feedbacks = feedbackDocs.docs.map((doc) => utils.withId<FeedbackRecord>(doc));
 			const senderIds = Array.from(
 				new Set(
@@ -655,6 +910,7 @@ export class App {
 			this.state = {
 				...this.state,
 				feedbacks,
+				feedbacksLimit: limitCount ?? null,
 				feedbackUsers: { ...this.state.feedbackUsers, ...feedbackUsers },
 				contentsLoaded: true,
 				contentsLoading: false,
@@ -662,10 +918,81 @@ export class App {
 		} catch (err) {
 			this.state = {
 				...this.state,
+				feedbacksLimit: limitCount ?? null,
 				contentsLoaded: true,
 				contentsLoading: false,
 			};
 			this.showToast((err as Error).message || "フィードバックの取得に失敗しました", "error");
+		}
+	}
+
+	async loadMySentFeedback(limitCount?: number) {
+		const currentUser = this.state.user;
+		if (!currentUser || this.state.contentsLoading) {
+			return;
+		}
+		this.state = { ...this.state, contentsLoading: true };
+		try {
+			const feedbackDocs = await listMyFeedbacks(this.firebase.firestore, currentUser.uid, limitCount);
+			const myFeedbacks = feedbackDocs.docs.map((doc) => utils.withId<FeedbackRecord>(doc));
+			const receiverIds = Array.from(
+				new Set(
+					myFeedbacks
+						.map((feedback) => feedback.receiverId)
+						.filter((receiverId): receiverId is string => Boolean(receiverId)),
+				),
+			);
+			const feedbackUsers: Record<string, UserProfile | null> = {};
+			await Promise.all(
+				receiverIds.map(async (receiverId) => {
+					try {
+						feedbackUsers[receiverId] = await getUser(this.firebase.firestore, receiverId);
+					} catch {
+						feedbackUsers[receiverId] = null;
+					}
+				}),
+			);
+			const contentIds = Array.from(
+				new Set(
+					myFeedbacks
+						.map((feedback) => feedback.contentId)
+						.filter((contentId): contentId is string => Boolean(contentId)),
+				),
+			);
+			const feedbackContentTitles = { ...this.state.feedbackContentTitles };
+			await Promise.all(
+				contentIds.map(async (contentId) => {
+					if (feedbackContentTitles[contentId]) return;
+					try {
+						const response = await getContentById(this.apiClient, contentId);
+						const content = response.data.content;
+						if (content?.title) {
+							feedbackContentTitles[contentId] = content.title;
+						}
+					} catch {
+						// Ignore lookup failures for sent feedback content titles.
+					}
+				}),
+			);
+			this.state = {
+				...this.state,
+				myFeedbacks,
+				myFeedbacksLoaded: true,
+				myFeedbacksLimit: limitCount ?? null,
+				feedbackUsers: { ...this.state.feedbackUsers, ...feedbackUsers },
+				feedbackContentTitles,
+				contentsLoaded: true,
+				contentsLoading: false,
+			};
+		} catch (err) {
+			this.state = {
+				...this.state,
+				myFeedbacksLoaded: true,
+				myFeedbacksLimit: limitCount ?? null,
+				contentsLoaded: true,
+				contentsLoading: false,
+			};
+			this.showToast((err as Error).message || "送ったフィードバックの取得に失敗しました", "error");
 		}
 	}
 
@@ -778,7 +1105,13 @@ export class App {
 	}
 
 	renderMyProfile() {
-		this.renderMyContent(this.state.profile, this.state.contents, {}, this.state.feedbacks);
+		this.renderMyContent(
+			this.state.profile,
+			this.state.contents,
+			{},
+			this.state.feedbacks,
+			this.state.myFeedbacks,
+		);
 	}
 
 	renderProfileSetup() {
@@ -1155,9 +1488,7 @@ export class App {
 	) {
 		const title = utils.escapeHtml(content.title);
 		const ownerName = utils.escapeHtml(owner?.name ?? "-");
-		const ownerLink = `<a id="content-owner-link" class="text-decoration-none text-reset" href="/users/${encodeURIComponent(
-			content.ownerId,
-		)}">${ownerName}</a>`;
+		const ownerLink = `<a id="content-owner-link" class="text-decoration-none text-reset" href="/users/${encodeURIComponent(content.ownerId)}">${ownerName}</a>`;
 		const descriptionText = content.description?.trim() ?? "";
 		const description = utils.escapeHtml(descriptionText);
 		const descriptionHtml = description
@@ -1313,6 +1644,7 @@ export class App {
 			showFeedbackLoginPrompt?: boolean;
 		} = {},
 		feedbacks?: FeedbackRecord[],
+		myFeedbacks?: FeedbackRecord[],
 	) {
 		const allowEdit = options.allowEdit ?? true;
 		const showActions = options.showActions ?? true;
@@ -1326,8 +1658,10 @@ export class App {
 		const showEditProfile = showActions && allowEdit;
 		const showFeedback = showActions && allowEdit;
 		const showFeedbackList = showFeedback && feedbacks !== undefined;
+		const showSentFeedbackList = showFeedback && myFeedbacks !== undefined;
 		const showCreateButton = showCreate && this.state.user !== null;
 		const feedbackUsers = this.state.feedbackUsers;
+		const feedbackContentTitles = this.state.feedbackContentTitles;
 		const contentTitleById = new Map(contents.map((content) => [content.id, content.title]));
 		const nameLink = options.nameLink ?? null;
 		const currentUserId = profile?.uid ?? this.state.user?.uid ?? "";
@@ -1351,7 +1685,9 @@ export class App {
 			.slice()
 			.sort((a, b) => utils.getTimestampMillis(b.createdAt) - utils.getTimestampMillis(a.createdAt));
 		const feedbackPreview = feedbackItems.slice(0, 5);
-		const showFeedbackMoreButton = feedbackItems.length > 0;
+		const showFeedbackMoreButton =
+			feedbackItems.length > 5 ||
+			(this.state.feedbacksLimit !== null && feedbackItems.length === this.state.feedbacksLimit);
 		const feedbackItemsHtml =
 			feedbackPreview.length === 0
 				? '<div class="agd-empty">フィードバックはまだありません。</div>'
@@ -1387,7 +1723,69 @@ export class App {
 											<div class="fw-semibold">
 												<a class="text-decoration-none text-dark js-feedback-title" href="#" data-feedback-id="${utils.escapeHtml(
 													feedback.id,
-												)}">${title}</a>
+												)}" data-feedback-type="received">${title}</a>
+											</div>
+											<div class="text-secondary small">${utils.escapeHtml(summary)}</div>
+											<div class="text-secondary small">作成日: ${createdAtText}</div>
+										</div>
+									</div>
+								`;
+							})
+							.join("")}
+					</div>
+				`;
+		const sentFeedbackItems = (myFeedbacks ?? [])
+			.slice()
+			.sort((a, b) => utils.getTimestampMillis(b.createdAt) - utils.getTimestampMillis(a.createdAt));
+		const sentFeedbackPreview = sentFeedbackItems.slice(0, 5);
+		const showSentFeedbackMoreButton =
+			sentFeedbackItems.length > 5 ||
+			(this.state.myFeedbacksLimit !== null && sentFeedbackItems.length === this.state.myFeedbacksLimit);
+		const sentFeedbackItemsHtml =
+			sentFeedbackPreview.length === 0
+				? '<div class="agd-empty">送ったフィードバックはまだありません。</div>'
+				: `
+					<div class="d-grid gap-3">
+						${sentFeedbackPreview
+							.map((feedback) => {
+								const title = utils.escapeHtml(feedback.title || "-");
+								const detailText = (feedback.detail ?? "").replace(/\s+/g, " ").trim();
+								const summaryBase = detailText || "-";
+								const summary =
+									summaryBase.length > feedbackSummaryLimit
+										? `${summaryBase.slice(0, feedbackSummaryLimit)}...`
+										: summaryBase;
+								const createdAtText = utils.formatTimestamp(feedback.createdAt);
+								const contentTitle = feedback.contentId
+									? (feedbackContentTitles[feedback.contentId] ?? "")
+									: "";
+								const contentTitleLabel = contentTitle || "コンテンツ";
+								const contentHref = feedback.contentId
+									? `/contents/${encodeURIComponent(feedback.contentId)}`
+									: "";
+								const contentTitleHtml = feedback.contentId
+									? `<div class="text-secondary small"><a class="text-decoration-none text-secondary js-content-link" href="${utils.escapeHtml(
+											contentHref,
+										)}" data-content-id="${utils.escapeHtml(
+											feedback.contentId,
+										)}">${utils.escapeHtml(contentTitleLabel)}</a> に対して</div>`
+									: "";
+								const receiverProfile = feedbackUsers[feedback.receiverId];
+								const avatarUrl = receiverProfile?.photoURL
+									? utils.escapeHtml(receiverProfile.photoURL)
+									: "/image/icon_default.png";
+								const avatarHtml = `<a class="text-decoration-none js-user-link" href="/users/${encodeURIComponent(feedback.receiverId)}" data-user-id="${utils.escapeHtml(
+									feedback.receiverId,
+								)}"><img class="agd-feedback-avatar rounded" src="${avatarUrl}" alt="receiver" /></a>`;
+								return `
+									<div class="d-flex gap-3 align-items-start">
+										${avatarHtml}
+										<div class="flex-grow-1">
+											${contentTitleHtml}
+											<div class="fw-semibold">
+												<a class="text-decoration-none text-dark js-feedback-title" href="#" data-feedback-id="${utils.escapeHtml(
+													feedback.id,
+												)}" data-feedback-type="sent">${title}</a>
 											</div>
 											<div class="text-secondary small">${utils.escapeHtml(summary)}</div>
 											<div class="text-secondary small">作成日: ${createdAtText}</div>
@@ -1419,8 +1817,30 @@ export class App {
 				</div>
 			`
 			: "";
-		const feedbackModalHtml = showFeedbackList
+		const sentFeedbackSectionHtml = showSentFeedbackList
 			? `
+				<div class="card shadow-sm mt-4 mb-4">
+					<div class="card-body">
+						<div class="d-flex align-items-center justify-content-between mb-3">
+							<h2 class="h6 mb-0">送ったフィードバック</h2>
+						</div>
+						${sentFeedbackItemsHtml}
+						${
+							showSentFeedbackMoreButton
+								? `
+						<div class="text-center mt-3">
+							<button id="my-sent-feedbacks-link" class="btn btn-link text-dark text-decoration-underline" type="button">もっと見る</button>
+						</div>
+					`
+								: ""
+						}
+					</div>
+				</div>
+			`
+			: "";
+		const feedbackModalHtml =
+			showFeedbackList || showSentFeedbackList
+				? `
 				<div class="modal fade" id="feedback-modal" tabindex="-1" aria-hidden="true">
 					<div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
 						<div class="modal-content">
@@ -1436,7 +1856,7 @@ export class App {
 					</div>
 				</div>
 			`
-			: "";
+				: "";
 		const contentsHtml =
 			contents.length === 0
 				? '<div class="agd-empty">コンテンツはまだありません。</div>'
@@ -1562,6 +1982,7 @@ export class App {
 				</div>
 			</div>
 			${feedbackSectionHtml}
+			${sentFeedbackSectionHtml}
 			${feedbackFormHtml}
 			${feedbackLoginPromptHtml}
 			${feedbackModalHtml}
@@ -1618,12 +2039,29 @@ export class App {
 			});
 		}
 
+		const mySentFeedbacksLink = utils.qs<HTMLButtonElement>("#my-sent-feedbacks-link");
+		if (mySentFeedbacksLink) {
+			mySentFeedbacksLink.addEventListener("click", () => {
+				utils.navigateTo("/my/myFeedbacks");
+			});
+		}
+
 		const contentEditButtons = utils.qsStrictAll<HTMLButtonElement>(this.rootEl, ".js-edit-content");
 		contentEditButtons.forEach((button) => {
 			const contentId = button.dataset.contentId;
 			if (!contentId) return;
 			button.addEventListener("click", () => {
 				utils.navigateTo(`/contents/${encodeURIComponent(contentId)}/edit`);
+			});
+		});
+
+		const userLinks = utils.qsStrictAll<HTMLAnchorElement>(this.rootEl, ".js-user-link");
+		userLinks.forEach((link) => {
+			const userId = link.dataset.userId;
+			if (!userId) return;
+			link.addEventListener("click", (event) => {
+				event.preventDefault();
+				utils.navigateTo(`/users/${encodeURIComponent(userId)}`);
 			});
 		});
 
@@ -1688,7 +2126,9 @@ export class App {
 			link.addEventListener("click", (event) => {
 				event.preventDefault();
 				const feedbackId = link.dataset.feedbackId ?? "";
-				const feedback = this.state.feedbacks.find((item) => item.id === feedbackId);
+				const feedbackType = link.dataset.feedbackType ?? "received";
+				const feedbackItems = feedbackType === "sent" ? this.state.myFeedbacks : this.state.feedbacks;
+				const feedback = feedbackItems.find((item) => item.id === feedbackId);
 				if (!feedback) return;
 				modalTitleEl.textContent = feedback.title;
 				modalDateEl.textContent = `作成日: ${utils.formatTimestamp(feedback.createdAt)}`;

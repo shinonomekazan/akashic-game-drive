@@ -434,7 +434,6 @@ export class App {
 		if (!this.state.contentsLoaded) {
 			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
 			await this.loadMyContents();
-			await this.loadMyFeedback();
 			await this.loadMySentFeedback();
 			await this.render();
 			return;

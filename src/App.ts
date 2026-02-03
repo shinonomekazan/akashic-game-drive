@@ -1351,6 +1351,7 @@ export class App {
 			.slice()
 			.sort((a, b) => utils.getTimestampMillis(b.createdAt) - utils.getTimestampMillis(a.createdAt));
 		const feedbackPreview = feedbackItems.slice(0, 5);
+		const showFeedbackMoreButton = feedbackItems.length > 0;
 		const feedbackItemsHtml =
 			feedbackPreview.length === 0
 				? '<div class="agd-empty">フィードバックはまだありません。</div>'
@@ -1405,9 +1406,15 @@ export class App {
 							<h2 class="h6 mb-0">もらったフィードバック</h2>
 						</div>
 						${feedbackItemsHtml}
+						${
+							showFeedbackMoreButton
+								? `
 						<div class="text-center mt-3">
 							<button id="my-feedbacks-link" class="btn btn-link text-dark text-decoration-underline" type="button">もっと見る</button>
 						</div>
+					`
+								: ""
+						}
 					</div>
 				</div>
 			`

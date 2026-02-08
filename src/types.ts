@@ -41,6 +41,7 @@ export type Route =
 	| { name: "my-edit" }
 	| { name: "my-contents" }
 	| { name: "my-feedbacks" }
+	| { name: "my-myFeedbacks" }
 	| { name: "content-view"; contentId: string }
 	| { name: "content-edit"; contentId: string }
 	| { name: "user"; userId: string };
@@ -72,6 +73,13 @@ export interface AppState {
 	contentViewOwnerLoaded: boolean;
 	contentViewOwnerLoading: boolean;
 	feedbacks: FeedbackRecord[];
+	myFeedbacks: FeedbackRecord[];
+	myFeedbacksLoaded: boolean;
+	feedbacksLimit: number | null;
+	myFeedbacksLimit: number | null;
 	feedbackUsers: Record<string, UserProfile | null>;
+	feedbackContentTitles: Record<string, string>;
 	myFeedbackDisplayCount: number;
+	mySentFeedbackDisplayCount: number;
+	refreshMyFeedbacks: boolean;
 }

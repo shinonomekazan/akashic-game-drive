@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, orderBy, query, type Firestore } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, type Firestore } from "firebase/firestore";
 import type { UserProfile } from "../types";
 
 export async function getUser(firestore: Firestore, uid: string): Promise<UserProfile | null> {
@@ -16,8 +16,20 @@ export async function getUser(firestore: Firestore, uid: string): Promise<UserPr
 	};
 }
 
-export async function listFeedback(firestore: Firestore, userId: string) {
+export async function listFeedback(firestore: Firestore, userId: string, limitCount?: number) {
 	const collectionRef = collection(firestore, `users/${userId}/feedbacks`);
-	const queryRef = query(collectionRef, orderBy("createdAt", "desc"));
+	const queryRef =
+		limitCount !== undefined
+			? query(collectionRef, orderBy("createdAt", "desc"), limit(limitCount))
+			: query(collectionRef, orderBy("createdAt", "desc"));
+	return getDocs(queryRef);
+}
+
+export async function listMyFeedbacks(firestore: Firestore, userId: string, limitCount?: number) {
+	const collectionRef = collection(firestore, `users/${userId}/myFeedbacks`);
+	const queryRef =
+		limitCount !== undefined
+			? query(collectionRef, orderBy("createdAt", "desc"), limit(limitCount))
+			: query(collectionRef, orderBy("createdAt", "desc"));
 	return getDocs(queryRef);
 }

@@ -127,8 +127,34 @@ export class App {
 			};
 			await this.render();
 		});
-
+		this.activateSplashScreen();
 		await this.render();
+	}
+
+	activateSplashScreen() {
+		const splashScreen = sessionStorage.getItem("akashic-game-drive-splash-screen");
+		if (splashScreen != null) return;
+		const element = document.createElement("div");
+		document.body.style.overflowY = "hidden";
+		element.classList.add("akashic-game-drive-splash");
+		const image = new Image();
+		image.addEventListener(
+			"load",
+			async () => {
+				image.classList.add("fade-in");
+				await utils.wait(1000);
+				await utils.wait(1000);
+				element.classList.add("fade-out");
+				await utils.wait(1000);
+				document.body.style.overflowY = "auto";
+				sessionStorage.setItem("akashic-game-drive-splash-screen", "shown");
+			},
+			{ once: true },
+		);
+		image.src = "/image/logo.png";
+		image.alt = "ニコ生ゲーム広場（仮）";
+		element.appendChild(image);
+		document.body.appendChild(element);
 	}
 
 	connectEmulatorIfDebug() {

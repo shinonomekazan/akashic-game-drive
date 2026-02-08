@@ -121,7 +121,7 @@ body {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background-color: black;
+	background-color: rgba(0, 0, 0, 0.8);
 }
 
 .akashic-game-drive-splash img {

@@ -168,3 +168,7 @@ export function withId<T>(doc: QueryDocumentSnapshot<DocumentData>): T {
 		...doc.data(),
 	} as T;
 }
+
+export function wait(ms: number) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}

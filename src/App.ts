@@ -1574,6 +1574,48 @@ export class App {
 			</div>
 		`
 			: "";
+		const reportHtml = `
+			<div class="d-flex justify-content-center">
+				<button type="button" class="btn btn-danger mt-4" data-bs-toggle="modal" data-bs-target="#reportModal">
+  					このゲームを通報する
+				</button>
+			</div>
+			<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+				<div class="modal-dialog modal-dialog-centered">
+					<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="reportModalLabel">通報フォーム</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<form id="report-form">
+						<div class="modal-body">
+						<p class="text-muted small">問題がある内容について教えてください。運営が内容を確認いたします。</p>
+						
+						<div class="mb-3">
+							<label for="report-category" class="form-label fw-bold">理由（必須）</label>
+							<select class="form-select" id="report-category" required>
+							<option value="" disabled selected>選択してください</option>
+							<option value="spam">スパム・広告</option>
+							<option value="inappropriate">不適切な画像・表現</option>
+							<option value="harassment">嫌がらせ・誹謗中傷</option>
+							<option value="other">その他</option>
+							</select>
+						</div>
+
+						<div class="mb-3">
+							<label for="report-description" class="form-label fw-bold">詳細（任意）</label>
+							<textarea class="form-control" id="report-description" rows="4" placeholder="具体的な状況を教えてください"></textarea>
+						</div>
+						</div>
+						<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+						<button type="submit" id="submit-report-btn" class="btn btn-danger">通報を送信する</button>
+						</div>
+					</form>
+					</div>
+				</div>
+			</div>
+		`;
 
 		this.setContent(`
 			<div class="row justify-content-center">
@@ -1597,6 +1639,7 @@ export class App {
 					</div>
 					${feedbackFormHtml}
 					${feedbackLoginPromptHtml}
+					${reportHtml}
 				</div>
 			</div>
 		`);
@@ -1652,6 +1695,50 @@ export class App {
 					this.showToast((err as Error).message, "error");
 				} finally {
 					sendFeedbackBtn.disabled = false;
+				}
+			});
+		}
+		const reportForm = utils.qs<HTMLFormElement>("#report-form");
+		const submitBtn = utils.qs<HTMLButtonElement>("#submit-report-btn");
+		const reportModalElement = utils.qs("reportModal");
+
+		if (reportForm) {
+			reportForm.addEventListener("submit", async (e: Event) => {
+				e.preventDefault();
+
+				const category = (document.getElementById("report-category") as HTMLSelectElement).value;
+				const description = (document.getElementById("report-description") as HTMLTextAreaElement).value;
+
+				if (submitBtn) {
+					// ボタンを無効化して連打防止
+					submitBtn.disabled = true;
+					submitBtn.innerHTML =
+						'<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 送信中...';
+				}
+
+				try {
+					// TODO ここにFirestoreへの登録処理を入れる
+					// await addDoc(collection(db, "reports"), { ... });
+					console.log("Firestoreへ保存:", { category, description });
+					alert("通報を送信しました。ご協力ありがとうございました。");
+
+					if (reportModalElement) {
+						// モーダルを閉じる
+						const modalInstance = Modal.getInstance(reportModalElement);
+						if (modalInstance) modalInstance.hide();
+					}
+
+					// フォームのリセット
+					reportForm.reset();
+				} catch (error) {
+					console.error("送信エラー:", error);
+					alert("送信に失敗しました。時間をおいて再度お試しください。");
+				} finally {
+					if (submitBtn) {
+						// 送信ボタンを元に戻す
+						submitBtn.disabled = false;
+						submitBtn.textContent = "通報を送信する";
+					}
 				}
 			});
 		}

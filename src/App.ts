@@ -842,6 +842,7 @@ export class App {
 		this.renderContentDetail(content, this.state.contentViewOwner, {
 			showFeedbackForm: !isOwnPage && isSignedIn,
 			showFeedbackLoginPrompt: !isOwnPage && !isSignedIn,
+			showReportForm: !isOwnPage && isSignedIn,
 		});
 	}
 
@@ -1510,6 +1511,7 @@ export class App {
 		options: {
 			showFeedbackForm?: boolean;
 			showFeedbackLoginPrompt?: boolean;
+			showReportForm?: boolean;
 		} = {},
 	) {
 		const title = utils.escapeHtml(content.title);
@@ -1575,7 +1577,9 @@ export class App {
 			</div>
 		`
 			: "";
-		const reportHtml = `
+		const showReportForm = options.showReportForm ?? false;
+		const reportFormHtml = showReportForm
+			? `
 			<div class="d-flex justify-content-center">
 				<button type="button" class="btn btn-danger mt-4" data-bs-toggle="modal" data-bs-target="#reportModal">
   					このゲームを通報する
@@ -1615,7 +1619,8 @@ export class App {
 					</div>
 				</div>
 			</div>
-		`;
+		`
+			: "";
 
 		this.setContent(`
 			<div class="row justify-content-center">
@@ -1639,7 +1644,7 @@ export class App {
 					</div>
 					${feedbackFormHtml}
 					${feedbackLoginPromptHtml}
-					${reportHtml}
+					${reportFormHtml}
 				</div>
 			</div>
 		`);
@@ -1700,45 +1705,31 @@ export class App {
 		}
 		const reportForm = utils.qs<HTMLFormElement>("#report-form");
 		const submitBtn = utils.qs<HTMLButtonElement>("#submit-report-btn");
-		const reportModalElement = utils.qs("reportModal");
+		const reportModalElement = utils.qs("#reportModal");
 
-		if (reportForm) {
-			reportForm.addEventListener("submit", async (e: Event) => {
-				e.preventDefault();
-				const category = (document.getElementById("report-category") as HTMLSelectElement).value;
-				const description = (document.getElementById("report-description") as HTMLTextAreaElement).value;
+		reportForm?.addEventListener("submit", async (e: Event) => {
+			e.preventDefault();
+			const category = (document.getElementById("report-category") as HTMLSelectElement).value;
+			const description = (document.getElementById("report-description") as HTMLTextAreaElement).value;
+			submitBtn!.disabled = true;
 
-				if (submitBtn) {
-					submitBtn.disabled = true;
-					submitBtn.innerHTML =
-						'<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 送信中...';
-				}
-
-				try {
-					const result = await createReport(this.apiClient, {
-						contentId: content.id,
-						category,
-						description,
-					});
-					if (result.data.reportId) {
-						alert("通報を送信しました。ご協力ありがとうございました。");
-					}
-					if (reportModalElement) {
-						const modalInstance = Modal.getInstance(reportModalElement);
-						if (modalInstance) modalInstance.hide();
-					}
-					reportForm.reset();
-				} catch (error) {
-					console.error("送信エラー:", error);
-					alert("送信に失敗しました。時間をおいて再度お試しください。");
-				} finally {
-					if (submitBtn) {
-						submitBtn.disabled = false;
-						submitBtn.textContent = "通報を送信する";
-					}
-				}
-			});
-		}
+			try {
+				const result = await createReport(this.apiClient, {
+					contentId: content.id,
+					category,
+					description,
+				});
+				if (result.data.reportId == null) return;
+				alert("通報を送信しました。ご協力ありがとうございました。");
+				Modal.getInstance(reportModalElement!)?.hide();
+				reportForm.reset();
+			} catch (error) {
+				console.error("送信エラー:", error);
+				alert("送信に失敗しました。時間をおいて再度お試しください。");
+			} finally {
+				submitBtn!.disabled = false;
+			}
+		});
 	}
 
 	renderMyContent(

@@ -1597,8 +1597,7 @@ export class App {
 							<select class="form-select" id="report-category" required>
 							<option value="" disabled selected>選択してください</option>
 							<option value="spam">スパム・広告</option>
-							<option value="inappropriate">不適切な画像・表現</option>
-							<option value="harassment">嫌がらせ・誹謗中傷</option>
+							<option value="violation">公序良俗違反</option>
 							<option value="other">その他</option>
 							</select>
 						</div>
@@ -1716,15 +1715,14 @@ export class App {
 				}
 
 				try {
-					// TODO ここにFirestoreへの登録処理を入れる
 					const result = await createReport(this.apiClient, {
-						contentId: "コンテンツID",
+						contentId: content.id,
 						category,
 						description,
 					});
-					console.log(result.data.reportId);
-					alert("通報を送信しました。ご協力ありがとうございました。");
-
+					if (result.data.reportId) {
+						alert("通報を送信しました。ご協力ありがとうございました。");
+					}
 					if (reportModalElement) {
 						const modalInstance = Modal.getInstance(reportModalElement);
 						if (modalInstance) modalInstance.hide();

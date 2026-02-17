@@ -16,6 +16,7 @@ import type { UpdateContentInput } from "./api/contents";
 import { createContent, createContentUploadUrl, getContentById, listMyContents, updateContent } from "./api/contents";
 import { createFeedback, createUser, getUserById, listUserContents } from "./api/users";
 import { loadContentFiles } from "./downloader";
+import { createReport } from "./api/reports";
 
 export class App {
 	firebase: FirebaseInstance;
@@ -336,44 +337,44 @@ export class App {
 				: `
 					<div class="d-grid gap-3">
 						${feedbackPreview
-					.map((feedback) => {
-						const titleText = utils.escapeHtml(feedback.title || "-");
-						const detailText = feedback.detail.replace(/\s+/g, " ").trim();
-						const summaryBase = detailText || "-";
-						const summary =
-							summaryBase.length > feedbackSummaryLimit
-								? `${summaryBase.slice(0, feedbackSummaryLimit)}...`
-								: summaryBase;
-						const createdAtText = utils.formatTimestamp(feedback.createdAt);
-						const contentTitle = feedback.contentId
-							? (contentTitleById.get(feedback.contentId) ?? "")
-							: "";
-						const contentTitleHtml = contentTitle
-							? `<div class="text-secondary small">${utils.escapeHtml(
-								contentTitle,
-							)} に対して</div>`
-							: "";
-						const senderProfile = feedbackUsers[feedback.senderId ?? ""];
-						const avatarUrl = senderProfile?.photoURL
-							? utils.escapeHtml(senderProfile.photoURL)
-							: "/image/icon_default.png";
-						return `
+							.map((feedback) => {
+								const titleText = utils.escapeHtml(feedback.title || "-");
+								const detailText = feedback.detail.replace(/\s+/g, " ").trim();
+								const summaryBase = detailText || "-";
+								const summary =
+									summaryBase.length > feedbackSummaryLimit
+										? `${summaryBase.slice(0, feedbackSummaryLimit)}...`
+										: summaryBase;
+								const createdAtText = utils.formatTimestamp(feedback.createdAt);
+								const contentTitle = feedback.contentId
+									? (contentTitleById.get(feedback.contentId) ?? "")
+									: "";
+								const contentTitleHtml = contentTitle
+									? `<div class="text-secondary small">${utils.escapeHtml(
+											contentTitle,
+										)} に対して</div>`
+									: "";
+								const senderProfile = feedbackUsers[feedback.senderId ?? ""];
+								const avatarUrl = senderProfile?.photoURL
+									? utils.escapeHtml(senderProfile.photoURL)
+									: "/image/icon_default.png";
+								return `
 									<div class="d-flex gap-3 align-items-start">
 										<img class="agd-feedback-avatar rounded" src="${avatarUrl}" alt="sender" />
 										<div class="flex-grow-1">
 											${contentTitleHtml}
 											<div class="fw-semibold">
 												<a class="text-decoration-none text-dark js-feedback-title" href="#" data-feedback-id="${utils.escapeHtml(
-							feedback.id,
-						)}" data-feedback-type="received">${titleText}</a>
+													feedback.id,
+												)}" data-feedback-type="received">${titleText}</a>
 											</div>
 											<div class="text-secondary small">${utils.escapeHtml(summary)}</div>
 											<div class="text-secondary small">作成日: ${createdAtText}</div>
 										</div>
 									</div>
 								`;
-					})
-					.join("")}
+							})
+							.join("")}
 					</div>
 				`;
 		const showMoreHtml = hasMore
@@ -499,60 +500,60 @@ export class App {
 				: `
 					<div class="d-grid gap-3">
 						${feedbackPreview
-					.map((feedback) => {
-						const titleText = utils.escapeHtml(feedback.title || "-");
-						const detailText = (feedback.detail ?? "").replace(/\s+/g, " ").trim();
-						const summaryBase = detailText || "-";
-						const summary =
-							summaryBase.length > feedbackSummaryLimit
-								? `${summaryBase.slice(0, feedbackSummaryLimit)}...`
-								: summaryBase;
-						const createdAtText = utils.formatTimestamp(feedback.createdAt);
-						const contentTitle = feedback.contentId
-							? (feedbackContentTitles[feedback.contentId] ?? "")
-							: "";
-						const contentTitleLabel = contentTitle || "コンテンツ";
-						const contentHref = feedback.contentId
-							? `/contents/${encodeURIComponent(feedback.contentId)}`
-							: "";
-						const contentTitleHtml = feedback.contentId
-							? `<div class="text-secondary small"><a class="text-decoration-none text-secondary js-content-link" href="${utils.escapeHtml(
-								contentHref,
-							)}" data-content-id="${utils.escapeHtml(
-								feedback.contentId,
-							)}">${utils.escapeHtml(contentTitleLabel)}</a> に対して</div>`
-							: "";
-						const receiverProfile = feedbackUsers[feedback.receiverId];
-						const avatarUrl = receiverProfile?.photoURL
-							? utils.escapeHtml(receiverProfile.photoURL)
-							: "/image/icon_default.png";
-						const receiverHref = feedback.receiverId
-							? `/users/${encodeURIComponent(feedback.receiverId)}`
-							: "";
-						const avatarHtml = receiverHref
-							? `<a class="text-decoration-none js-user-link" href="${utils.escapeHtml(
-								receiverHref,
-							)}" data-user-id="${utils.escapeHtml(
-								feedback.receiverId,
-							)}"><img class="agd-feedback-avatar rounded" src="${avatarUrl}" alt="receiver" /></a>`
-							: `<img class="agd-feedback-avatar rounded" src="${avatarUrl}" alt="receiver" />`;
-						return `
+							.map((feedback) => {
+								const titleText = utils.escapeHtml(feedback.title || "-");
+								const detailText = (feedback.detail ?? "").replace(/\s+/g, " ").trim();
+								const summaryBase = detailText || "-";
+								const summary =
+									summaryBase.length > feedbackSummaryLimit
+										? `${summaryBase.slice(0, feedbackSummaryLimit)}...`
+										: summaryBase;
+								const createdAtText = utils.formatTimestamp(feedback.createdAt);
+								const contentTitle = feedback.contentId
+									? (feedbackContentTitles[feedback.contentId] ?? "")
+									: "";
+								const contentTitleLabel = contentTitle || "コンテンツ";
+								const contentHref = feedback.contentId
+									? `/contents/${encodeURIComponent(feedback.contentId)}`
+									: "";
+								const contentTitleHtml = feedback.contentId
+									? `<div class="text-secondary small"><a class="text-decoration-none text-secondary js-content-link" href="${utils.escapeHtml(
+											contentHref,
+										)}" data-content-id="${utils.escapeHtml(
+											feedback.contentId,
+										)}">${utils.escapeHtml(contentTitleLabel)}</a> に対して</div>`
+									: "";
+								const receiverProfile = feedbackUsers[feedback.receiverId];
+								const avatarUrl = receiverProfile?.photoURL
+									? utils.escapeHtml(receiverProfile.photoURL)
+									: "/image/icon_default.png";
+								const receiverHref = feedback.receiverId
+									? `/users/${encodeURIComponent(feedback.receiverId)}`
+									: "";
+								const avatarHtml = receiverHref
+									? `<a class="text-decoration-none js-user-link" href="${utils.escapeHtml(
+											receiverHref,
+										)}" data-user-id="${utils.escapeHtml(
+											feedback.receiverId,
+										)}"><img class="agd-feedback-avatar rounded" src="${avatarUrl}" alt="receiver" /></a>`
+									: `<img class="agd-feedback-avatar rounded" src="${avatarUrl}" alt="receiver" />`;
+								return `
 									<div class="d-flex gap-3 align-items-start">
 										${avatarHtml}
 										<div class="flex-grow-1">
 											${contentTitleHtml}
 											<div class="fw-semibold">
 												<a class="text-decoration-none text-dark js-feedback-title" href="#" data-feedback-id="${utils.escapeHtml(
-							feedback.id,
-						)}" data-feedback-type="sent">${titleText}</a>
+													feedback.id,
+												)}" data-feedback-type="sent">${titleText}</a>
 											</div>
 											<div class="text-secondary small">${utils.escapeHtml(summary)}</div>
 											<div class="text-secondary small">作成日: ${createdAtText}</div>
 										</div>
 									</div>
 								`;
-					})
-					.join("")}
+							})
+							.join("")}
 					</div>
 				`;
 		const showMoreHtml = hasMore
@@ -1220,8 +1221,8 @@ export class App {
 		const existingZipLink =
 			isEdit && content?.zipUrl && content?.state !== "failed"
 				? `<div class="small mt-2">現在のZIP: <a href="${utils.escapeHtml(
-					content.zipUrl,
-				)}" target="_blank" rel="noopener">${utils.escapeHtml(zipName)}</a></div>`
+						content.zipUrl,
+					)}" target="_blank" rel="noopener">${utils.escapeHtml(zipName)}</a></div>`
 				: "";
 		this.setContent(`
 			<div class="row justify-content-center">
@@ -1561,8 +1562,9 @@ export class App {
 		`
 			: "";
 		const showFeedbackLoginPrompt = options.showFeedbackLoginPrompt ?? false;
-		const loginHref = `/login?next=${encodeURIComponent(window.location.pathname || "/")}${utils.isDebugMode() ? "&debug=true" : ""
-			}`;
+		const loginHref = `/login?next=${encodeURIComponent(window.location.pathname || "/")}${
+			utils.isDebugMode() ? "&debug=true" : ""
+		}`;
 		const feedbackLoginPromptHtml = showFeedbackLoginPrompt
 			? `
 			<div class="card shadow-sm mt-4">
@@ -1716,7 +1718,12 @@ export class App {
 				try {
 					// TODO ここにFirestoreへの登録処理を入れる
 					// await addDoc(collection(db, "reports"), { ... });
-					console.log("Firestoreへ保存:", { category, description });
+					const result = await createReport(this.apiClient, {
+						contentId: "コンテンツID",
+						category,
+						description,
+					});
+					console.log(result);
 					alert("通報を送信しました。ご協力ありがとうございました。");
 
 					if (reportModalElement) {
@@ -1756,8 +1763,9 @@ export class App {
 		const showCreate = options.showCreate ?? true;
 		const showFeedbackForm = options.showFeedbackForm ?? false;
 		const showFeedbackLoginPrompt = options.showFeedbackLoginPrompt ?? false;
-		const loginHref = `/login?next=${encodeURIComponent(window.location.pathname || "/")}${utils.isDebugMode() ? "&debug=true" : ""
-			}`;
+		const loginHref = `/login?next=${encodeURIComponent(window.location.pathname || "/")}${
+			utils.isDebugMode() ? "&debug=true" : ""
+		}`;
 		const showLogout = showActions && this.state.user !== null;
 		const showEditProfile = showActions && allowEdit;
 		const showFeedback = showActions && allowEdit;
@@ -1774,8 +1782,8 @@ export class App {
 		const safeName = utils.escapeHtml(name);
 		const nameHtml = nameLink
 			? `<a id="my-page-link" class="text-decoration-none text-reset" href="${utils.escapeHtml(
-				nameLink,
-			)}">${safeName} マイページ</a>`
+					nameLink,
+				)}">${safeName} マイページ</a>`
 			: `${safeName} マイページ`;
 		const profileNotice = profile
 			? ""
@@ -1798,44 +1806,44 @@ export class App {
 				: `
 					<div class="d-grid gap-3">
 						${feedbackPreview
-					.map((feedback) => {
-						const title = utils.escapeHtml(feedback.title || "-");
-						const detailText = (feedback.detail ?? "").replace(/\s+/g, " ").trim();
-						const summaryBase = detailText || "-";
-						const summary =
-							summaryBase.length > feedbackSummaryLimit
-								? `${summaryBase.slice(0, feedbackSummaryLimit)}...`
-								: summaryBase;
-						const createdAtText = utils.formatTimestamp(feedback.createdAt);
-						const contentTitle = feedback.contentId
-							? (contentTitleById.get(feedback.contentId) ?? "")
-							: "";
-						const contentTitleHtml = contentTitle
-							? `<div class="text-secondary small">${utils.escapeHtml(
-								contentTitle,
-							)} に対して</div>`
-							: "";
-						const senderProfile = feedbackUsers[feedback.senderId ?? ""];
-						const avatarUrl = senderProfile?.photoURL
-							? utils.escapeHtml(senderProfile.photoURL)
-							: "/image/icon_default.png";
-						return `
+							.map((feedback) => {
+								const title = utils.escapeHtml(feedback.title || "-");
+								const detailText = (feedback.detail ?? "").replace(/\s+/g, " ").trim();
+								const summaryBase = detailText || "-";
+								const summary =
+									summaryBase.length > feedbackSummaryLimit
+										? `${summaryBase.slice(0, feedbackSummaryLimit)}...`
+										: summaryBase;
+								const createdAtText = utils.formatTimestamp(feedback.createdAt);
+								const contentTitle = feedback.contentId
+									? (contentTitleById.get(feedback.contentId) ?? "")
+									: "";
+								const contentTitleHtml = contentTitle
+									? `<div class="text-secondary small">${utils.escapeHtml(
+											contentTitle,
+										)} に対して</div>`
+									: "";
+								const senderProfile = feedbackUsers[feedback.senderId ?? ""];
+								const avatarUrl = senderProfile?.photoURL
+									? utils.escapeHtml(senderProfile.photoURL)
+									: "/image/icon_default.png";
+								return `
 									<div class="d-flex gap-3 align-items-start">
 										<img class="agd-feedback-avatar rounded" src="${avatarUrl}" alt="sender" />
 										<div class="flex-grow-1">
 											${contentTitleHtml}
 											<div class="fw-semibold">
 												<a class="text-decoration-none text-dark js-feedback-title" href="#" data-feedback-id="${utils.escapeHtml(
-							feedback.id,
-						)}" data-feedback-type="received">${title}</a>
+													feedback.id,
+												)}" data-feedback-type="received">${title}</a>
 											</div>
 											<div class="text-secondary small">${utils.escapeHtml(summary)}</div>
 											<div class="text-secondary small">作成日: ${createdAtText}</div>
 										</div>
 									</div>
 								`;
-					})
-					.join("")}
+							})
+							.join("")}
 					</div>
 				`;
 		const sentFeedbackItems = (myFeedbacks ?? [])
@@ -1851,53 +1859,53 @@ export class App {
 				: `
 					<div class="d-grid gap-3">
 						${sentFeedbackPreview
-					.map((feedback) => {
-						const title = utils.escapeHtml(feedback.title || "-");
-						const detailText = (feedback.detail ?? "").replace(/\s+/g, " ").trim();
-						const summaryBase = detailText || "-";
-						const summary =
-							summaryBase.length > feedbackSummaryLimit
-								? `${summaryBase.slice(0, feedbackSummaryLimit)}...`
-								: summaryBase;
-						const createdAtText = utils.formatTimestamp(feedback.createdAt);
-						const contentTitle = feedback.contentId
-							? (feedbackContentTitles[feedback.contentId] ?? "")
-							: "";
-						const contentTitleLabel = contentTitle || "コンテンツ";
-						const contentHref = feedback.contentId
-							? `/contents/${encodeURIComponent(feedback.contentId)}`
-							: "";
-						const contentTitleHtml = feedback.contentId
-							? `<div class="text-secondary small"><a class="text-decoration-none text-secondary js-content-link" href="${utils.escapeHtml(
-								contentHref,
-							)}" data-content-id="${utils.escapeHtml(
-								feedback.contentId,
-							)}">${utils.escapeHtml(contentTitleLabel)}</a> に対して</div>`
-							: "";
-						const receiverProfile = feedbackUsers[feedback.receiverId];
-						const avatarUrl = receiverProfile?.photoURL
-							? utils.escapeHtml(receiverProfile.photoURL)
-							: "/image/icon_default.png";
-						const avatarHtml = `<a class="text-decoration-none js-user-link" href="/users/${encodeURIComponent(feedback.receiverId)}" data-user-id="${utils.escapeHtml(
-							feedback.receiverId,
-						)}"><img class="agd-feedback-avatar rounded" src="${avatarUrl}" alt="receiver" /></a>`;
-						return `
+							.map((feedback) => {
+								const title = utils.escapeHtml(feedback.title || "-");
+								const detailText = (feedback.detail ?? "").replace(/\s+/g, " ").trim();
+								const summaryBase = detailText || "-";
+								const summary =
+									summaryBase.length > feedbackSummaryLimit
+										? `${summaryBase.slice(0, feedbackSummaryLimit)}...`
+										: summaryBase;
+								const createdAtText = utils.formatTimestamp(feedback.createdAt);
+								const contentTitle = feedback.contentId
+									? (feedbackContentTitles[feedback.contentId] ?? "")
+									: "";
+								const contentTitleLabel = contentTitle || "コンテンツ";
+								const contentHref = feedback.contentId
+									? `/contents/${encodeURIComponent(feedback.contentId)}`
+									: "";
+								const contentTitleHtml = feedback.contentId
+									? `<div class="text-secondary small"><a class="text-decoration-none text-secondary js-content-link" href="${utils.escapeHtml(
+											contentHref,
+										)}" data-content-id="${utils.escapeHtml(
+											feedback.contentId,
+										)}">${utils.escapeHtml(contentTitleLabel)}</a> に対して</div>`
+									: "";
+								const receiverProfile = feedbackUsers[feedback.receiverId];
+								const avatarUrl = receiverProfile?.photoURL
+									? utils.escapeHtml(receiverProfile.photoURL)
+									: "/image/icon_default.png";
+								const avatarHtml = `<a class="text-decoration-none js-user-link" href="/users/${encodeURIComponent(feedback.receiverId)}" data-user-id="${utils.escapeHtml(
+									feedback.receiverId,
+								)}"><img class="agd-feedback-avatar rounded" src="${avatarUrl}" alt="receiver" /></a>`;
+								return `
 									<div class="d-flex gap-3 align-items-start">
 										${avatarHtml}
 										<div class="flex-grow-1">
 											${contentTitleHtml}
 											<div class="fw-semibold">
 												<a class="text-decoration-none text-dark js-feedback-title" href="#" data-feedback-id="${utils.escapeHtml(
-							feedback.id,
-						)}" data-feedback-type="sent">${title}</a>
+													feedback.id,
+												)}" data-feedback-type="sent">${title}</a>
 											</div>
 											<div class="text-secondary small">${utils.escapeHtml(summary)}</div>
 											<div class="text-secondary small">作成日: ${createdAtText}</div>
 										</div>
 									</div>
 								`;
-					})
-					.join("")}
+							})
+							.join("")}
 					</div>
 				`;
 		const feedbackSectionHtml = showFeedbackList
@@ -1908,14 +1916,15 @@ export class App {
 							<h2 class="h6 mb-0">もらったフィードバック</h2>
 						</div>
 						${feedbackItemsHtml}
-						${showFeedbackMoreButton
-				? `
+						${
+							showFeedbackMoreButton
+								? `
 						<div class="text-center mt-3">
 							<button id="my-feedbacks-link" class="btn btn-link text-dark text-decoration-underline" type="button">もっと見る</button>
 						</div>
 					`
-				: ""
-			}
+								: ""
+						}
 					</div>
 				</div>
 			`
@@ -1928,14 +1937,15 @@ export class App {
 							<h2 class="h6 mb-0">送ったフィードバック</h2>
 						</div>
 						${sentFeedbackItemsHtml}
-						${showSentFeedbackMoreButton
-				? `
+						${
+							showSentFeedbackMoreButton
+								? `
 						<div class="text-center mt-3">
 							<button id="my-sent-feedbacks-link" class="btn btn-link text-dark text-decoration-underline" type="button">もっと見る</button>
 						</div>
 					`
-				: ""
-			}
+								: ""
+						}
 					</div>
 				</div>
 			`
@@ -1965,30 +1975,30 @@ export class App {
 				: `
 					<div class="d-grid gap-3">
 						${contents
-					.map((content) => {
-						const title = utils.escapeHtml(content.title);
-						const description = content.description
-							? `<div class="text-secondary small mt-1">${utils.escapeHtml(content.description)}</div>`
-							: "";
-						const stateLabel = utils.getStateListContentLabel(content.state);
-						const stateLabelHtml = stateLabel;
-						const contentLink = `/contents/${encodeURIComponent(content.id)}`;
-						const titleLink = `<a class="text-decoration-none text-reset js-content-link" href="${utils.escapeHtml(
-							contentLink,
-						)}" data-content-id="${utils.escapeHtml(content.id)}">${title}</a>`;
-						const contentCreatedAt = utils.formatTimestamp(content.createdAt);
-						const thumbnail = content.thumbnailUrl
-							? `<img class="agd-thumb-sm rounded" src="${utils.escapeHtml(content.thumbnailUrl)}" alt="${title}" />`
-							: `<div class="agd-thumb-sm rounded bg-light d-flex align-items-center justify-content-center text-secondary">-</div>`;
-						const thumbLink = `<a class="js-content-link" href="${utils.escapeHtml(
-							contentLink,
-						)}" data-content-id="${utils.escapeHtml(content.id)}">${thumbnail}</a>`;
-						const editButton = allowEdit
-							? `<button class="btn btn-sm btn-outline-secondary js-edit-content" type="button" data-content-id="${utils.escapeHtml(
-								content.id,
-							)}">編集</button>`
-							: "";
-						return `
+							.map((content) => {
+								const title = utils.escapeHtml(content.title);
+								const description = content.description
+									? `<div class="text-secondary small mt-1">${utils.escapeHtml(content.description)}</div>`
+									: "";
+								const stateLabel = utils.getStateListContentLabel(content.state);
+								const stateLabelHtml = stateLabel;
+								const contentLink = `/contents/${encodeURIComponent(content.id)}`;
+								const titleLink = `<a class="text-decoration-none text-reset js-content-link" href="${utils.escapeHtml(
+									contentLink,
+								)}" data-content-id="${utils.escapeHtml(content.id)}">${title}</a>`;
+								const contentCreatedAt = utils.formatTimestamp(content.createdAt);
+								const thumbnail = content.thumbnailUrl
+									? `<img class="agd-thumb-sm rounded" src="${utils.escapeHtml(content.thumbnailUrl)}" alt="${title}" />`
+									: `<div class="agd-thumb-sm rounded bg-light d-flex align-items-center justify-content-center text-secondary">-</div>`;
+								const thumbLink = `<a class="js-content-link" href="${utils.escapeHtml(
+									contentLink,
+								)}" data-content-id="${utils.escapeHtml(content.id)}">${thumbnail}</a>`;
+								const editButton = allowEdit
+									? `<button class="btn btn-sm btn-outline-secondary js-edit-content" type="button" data-content-id="${utils.escapeHtml(
+											content.id,
+										)}">編集</button>`
+									: "";
+								return `
 									<div class="card shadow-sm">
 										<div class="card-body">
 											<div class="d-flex gap-3 align-items-start">
@@ -2004,8 +2014,8 @@ export class App {
 										</div>
 									</div>
 								`;
-					})
-					.join("")}
+							})
+							.join("")}
 					</div>
 				`;
 		const actionsHtml =
@@ -2020,8 +2030,8 @@ export class App {
 		const viewProfileHref = currentUserId ? `/users/${encodeURIComponent(currentUserId)}` : "";
 		const viewProfileButtonHtml = viewProfileHref
 			? `<a id="view-profile" class="btn btn-outline-secondary" href="${utils.escapeHtml(
-				viewProfileHref,
-			)}">プロフィール表示確認</a>`
+					viewProfileHref,
+				)}">プロフィール表示確認</a>`
 			: "";
 		const createButtonHtml = showCreateButton
 			? `
@@ -2047,8 +2057,8 @@ export class App {
 						</div>
 						<div class="d-flex justify-content-center">
 							<button id="send-feedback" class="btn btn-primary" type="button" data-receiver-id="${utils.escapeHtml(
-				profile?.uid ?? "",
-			)}">送信</button>
+								profile?.uid ?? "",
+							)}">送信</button>
 						</div>
 					</form>
 				</div>

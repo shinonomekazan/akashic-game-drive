@@ -1717,13 +1717,12 @@ export class App {
 
 				try {
 					// TODO ここにFirestoreへの登録処理を入れる
-					// await addDoc(collection(db, "reports"), { ... });
 					const result = await createReport(this.apiClient, {
 						contentId: "コンテンツID",
 						category,
 						description,
 					});
-					console.log(result);
+					console.log(result.data.reportId);
 					alert("通報を送信しました。ご協力ありがとうございました。");
 
 					if (reportModalElement) {

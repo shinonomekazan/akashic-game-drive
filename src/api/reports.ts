@@ -7,9 +7,5 @@ export interface CreateReportInput {
 }
 
 export async function createReport(client: Client, input: CreateReportInput) {
-	return client.callWithAuthorization<{ result: string; reportId: string }>(
-		"POST",
-		"/reports",
-		JSON.stringify(input),
-	);
+	return client.callWithAuthorization<{ reportId: string }>("POST", "/reports", JSON.stringify(input));
 }

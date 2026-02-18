@@ -87,12 +87,43 @@ function collectExpectedPaths(gameJson: Record<string, unknown>) {
 		});
 	}
 
-	const moduleMainScripts = gameJson.moduleMainScripts as Record<string, unknown> | undefined;
-	if (moduleMainScripts && typeof moduleMainScripts === "object") {
-		Object.values(moduleMainScripts).forEach(addPath);
+	const globalScripts = gameJson.globalScripts as Record<string, unknown> | undefined;
+	if (globalScripts && typeof globalScripts === "object") {
+		Object.values(globalScripts).forEach(addPath);
 	}
 
 	return { paths, invalidPaths };
+}
+
+function validateAudioPaths(expectedPaths:Set<string>,actualPaths:Set<string>) {
+	const expectedAudioPaths = new Set<string>;
+	const actualAudioPaths = new Set<string>;
+	expectedPaths.forEach((expected)=>{
+		const path = expected.split("/");
+		if(path[0] === "audio") {
+			expectedAudioPaths.add(expected);
+		}
+	});
+	actualPaths.forEach((actual)=>{
+		const path = actual.split("/");
+		if(path[0] === "audio") {
+			actualAudioPaths.add(actual);
+		}
+	});
+
+	const validatedAudioPaths = new Set<string>;
+	expectedAudioPaths.forEach((audioPath)=>{
+		if(actualAudioPaths.has(audioPath+".ogg")) {
+			if(actualAudioPaths.has(audioPath+".m4a")) {
+				validatedAudioPaths.add(audioPath).add(audioPath+".ogg").add(audioPath+".m4a");
+				console.log(audioPath+".ogg");
+			}else if(actualAudioPaths.has(audioPath+".aac")) {
+				validatedAudioPaths.add(audioPath).add(audioPath+".ogg").add(audioPath+".aac");
+			}
+		}
+	});
+
+	return validatedAudioPaths;
 }
 
 function scanForDisallowedUsage(entries: NormalizedEntry[]) {
@@ -177,8 +208,10 @@ function validateZipContents(zip: { getEntries: () => ZipEntry[] }) {
 		};
 	}
 
-	const missingPaths = [...expectedPaths].filter((expected) => !actualPaths.has(expected));
-	const extraPaths = [...actualPaths].filter((actual) => !expectedPaths.has(actual));
+	const validatedAudioPaths = validateAudioPaths(expectedPaths,actualPaths);
+
+	const missingPaths = [...expectedPaths].filter((expected) => !actualPaths.has(expected) && !validatedAudioPaths.has(expected));
+	const extraPaths = [...actualPaths].filter((actual) => !expectedPaths.has(actual) && actual !== "library_license.txt" && !validatedAudioPaths.has(actual));
 
 	if (missingPaths.length > 0 || extraPaths.length > 0) {
 		return {

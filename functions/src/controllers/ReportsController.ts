@@ -6,6 +6,7 @@ import * as fw from "../fw";
 import * as params from "../params";
 import type { ReportRecord } from "../types";
 import { storeReport } from "../stores";
+import * as resolvers from "../resolvers";
 
 interface CreateParams {
 	authorization: string;
@@ -50,6 +51,13 @@ export class ReportsController extends BaseController {
 	async post(context: Context) {
 		const p = context.params as CreateParams;
 		const verifyResult = await this.verify(p.authorization);
+		const contentResult = await resolvers.contents.resolve(this.app.firestore, p.contentId);
+		if (contentResult == null) {
+			throw new fw.types.NotFound("コンテンツが見つかりません");
+		}
+		if (contentResult.ownerId === verifyResult.uid) {
+			throw new fw.types.Forbidden("自分のコンテンツには通報できません");
+		}
 		const reportData = {
 			reporterId: verifyResult.uid,
 			contentId: p.contentId,

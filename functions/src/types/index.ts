@@ -41,5 +41,6 @@ export interface ReportRecord {
 	category: "spam" | "violation" | "other";
 	description?: string;
 	status: "waiting" | "rejected" | "resolved";
-	createdAt: Timestamp;
+	createdAt?: Timestamp | null;
+	updatedAt?: Timestamp | null;
 }

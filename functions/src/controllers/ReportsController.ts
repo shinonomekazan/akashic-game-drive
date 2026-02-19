@@ -11,7 +11,7 @@ import * as resolvers from "../resolvers";
 interface CreateParams {
 	authorization: string;
 	contentId: string;
-	category: string;
+	category: "spam" | "violation" | "other";
 	description?: string;
 }
 
@@ -34,14 +34,8 @@ export class ReportsController extends BaseController {
 				(context) =>
 					({
 						authorization: context.req.headers.authorization,
-						contentId:
-							typeof context.req.body.contentId === "string"
-								? context.req.body.contentId.trim()
-								: context.req.body.contentId,
-						category:
-							typeof context.req.body.category === "string"
-								? context.req.body.category.trim()
-								: context.req.body.category,
+						contentId: String(context.req.body.contentId).trim(),
+						category: String(context.req.body.category).trim() as CreateParams["category"],
 						description: context.req.body.description,
 					}) as CreateParams,
 			),

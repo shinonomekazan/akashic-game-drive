@@ -1704,10 +1704,7 @@ export class App {
 			});
 		}
 		const reportForm = utils.qs<HTMLFormElement>("#report-form");
-		if (reportForm == null) {
-			console.error("通報フォームがありません");
-			return;
-		}
+		if (reportForm == null) return;
 
 		reportForm.addEventListener("submit", async (e: Event) => {
 			e.preventDefault();

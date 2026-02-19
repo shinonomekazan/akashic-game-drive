@@ -1,4 +1,4 @@
-import { ContentRecord, FeedbackRecord, UserProfile } from "../types";
+import { ContentRecord, FeedbackRecord, UserProfile, ReportRecord } from "../types";
 import { Firestore, Timestamp } from "@google-cloud/firestore";
 import { eraseUndefined } from "../utils";
 import * as fw from "../fw";
@@ -110,4 +110,25 @@ export function storeFeedback(firestore: Firestore, feedback: Omit<FeedbackRecor
 			createdAt: Timestamp.now(),
 		}),
 	);
+}
+
+export function storeReport(
+	firestore: Firestore,
+	report: Pick<ReportRecord, "reporterId" | "contentId" | "category" | "description">,
+) {
+	const reportDoc = firestore.collection("reports").doc();
+	return reportDoc
+		.set(
+			eraseUndefined({
+				type: "content",
+				reporterId: report.reporterId,
+				contentId: report.contentId,
+				category: report.category,
+				description: report.description,
+				status: "waiting",
+				createdAt: Timestamp.now(),
+				updatedAt: Timestamp.now(),
+			}),
+		)
+		.then(() => reportDoc.id);
 }

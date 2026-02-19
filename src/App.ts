@@ -16,6 +16,7 @@ import type { UpdateContentInput } from "./api/contents";
 import { createContent, createContentUploadUrl, getContentById, listMyContents, updateContent } from "./api/contents";
 import { createFeedback, createUser, getUserById, listUserContents } from "./api/users";
 import { loadContentFiles } from "./downloader";
+import { createReport } from "./api/reports";
 
 export class App {
 	firebase: FirebaseInstance;
@@ -841,6 +842,7 @@ export class App {
 		this.renderContentDetail(content, this.state.contentViewOwner, {
 			showFeedbackForm: !isOwnPage && isSignedIn,
 			showFeedbackLoginPrompt: !isOwnPage && !isSignedIn,
+			showReportForm: !isOwnPage && isSignedIn,
 		});
 	}
 
@@ -1509,6 +1511,7 @@ export class App {
 		options: {
 			showFeedbackForm?: boolean;
 			showFeedbackLoginPrompt?: boolean;
+			showReportForm?: boolean;
 		} = {},
 	) {
 		const title = utils.escapeHtml(content.title);
@@ -1574,6 +1577,50 @@ export class App {
 			</div>
 		`
 			: "";
+		const showReportForm = options.showReportForm ?? false;
+		const reportFormHtml = showReportForm
+			? `
+			<div class="d-flex justify-content-center">
+				<button type="button" class="btn btn-danger mt-4" data-bs-toggle="modal" data-bs-target="#report-modal">
+  					このゲームを通報する
+				</button>
+			</div>
+			<div class="modal fade" id="report-modal" tabindex="-1" aria-labelledby="report-modal-label" aria-hidden="true">
+				<div class="modal-dialog modal-dialog-centered">
+					<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="report-modal-label">通報フォーム</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<form id="report-form">
+						<div class="modal-body">
+						<p class="text-muted small">問題がある内容について教えてください。運営が内容を確認いたします。</p>
+						
+						<div class="mb-3">
+							<label for="report-category" class="form-label fw-bold">理由（必須）</label>
+							<select class="form-select" id="report-category" required>
+							<option value="" disabled selected>選択してください</option>
+							<option value="spam">スパム・広告</option>
+							<option value="violation">公序良俗違反</option>
+							<option value="other">その他</option>
+							</select>
+						</div>
+
+						<div class="mb-3">
+							<label for="report-description" class="form-label fw-bold">詳細（任意）</label>
+							<textarea class="form-control" id="report-description" rows="4" placeholder="具体的な状況を教えてください"></textarea>
+						</div>
+						</div>
+						<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+						<button type="submit" id="report-submit-btn" class="btn btn-danger">通報を送信する</button>
+						</div>
+					</form>
+					</div>
+				</div>
+			</div>
+		`
+			: "";
 
 		this.setContent(`
 			<div class="row justify-content-center">
@@ -1597,6 +1644,7 @@ export class App {
 					</div>
 					${feedbackFormHtml}
 					${feedbackLoginPromptHtml}
+					${reportFormHtml}
 				</div>
 			</div>
 		`);
@@ -1655,6 +1703,43 @@ export class App {
 				}
 			});
 		}
+		const reportForm = utils.qs<HTMLFormElement>("#report-form");
+		if (reportForm == null) return;
+
+		reportForm.addEventListener("submit", async (e: Event) => {
+			e.preventDefault();
+			const categorySelect = utils.qsStrict<HTMLSelectElement>("#report-category", reportForm);
+			const descriptionTextarea = utils.qsStrict<HTMLTextAreaElement>("#report-description", reportForm);
+			const submitBtn = utils.qsStrict<HTMLButtonElement>("#report-submit-btn", reportForm);
+			const reportModalElement = utils.qsStrict<HTMLElement>("#report-modal");
+			const category = categorySelect.value as "spam" | "violation" | "other";
+			const description = descriptionTextarea.value;
+			submitBtn.disabled = true;
+
+			try {
+				const result = await createReport(this.apiClient, {
+					contentId: content.id,
+					category,
+					description,
+				});
+
+				if (result.data.reportId == null) {
+					console.error("通報送信エラー: reportId がレスポンスに含まれていません。", result);
+					this.showToast("送信に失敗しました。時間をおいて再度お試しください。", "error");
+					return;
+				}
+
+				this.showToast("通報を送信しました。ご協力ありがとうございました。");
+
+				Modal.getInstance(reportModalElement)?.hide();
+				reportForm.reset();
+			} catch (error) {
+				console.error("送信エラー:", error);
+				this.showToast("送信に失敗しました。時間をおいて再度お試しください。", "error");
+			} finally {
+				submitBtn.disabled = false;
+			}
+		});
 	}
 
 	renderMyContent(

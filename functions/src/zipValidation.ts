@@ -95,30 +95,36 @@ function collectExpectedPaths(gameJson: Record<string, unknown>) {
 	return { paths, invalidPaths };
 }
 
-function validateAudioPaths(expectedPaths:Set<string>,actualPaths:Set<string>) {
-	const expectedAudioPaths = new Set<string>;
-	const actualAudioPaths = new Set<string>;
-	expectedPaths.forEach((expected)=>{
+function validateAudioPaths(expectedPaths: Set<string>, actualPaths: Set<string>) {
+	const expectedAudioPaths = new Set<string>();
+	const actualAudioPaths = new Set<string>();
+	expectedPaths.forEach((expected) => {
 		const path = expected.split("/");
-		if(path[0] === "audio") {
+		if (path[0] === "audio") {
 			expectedAudioPaths.add(expected);
 		}
 	});
-	actualPaths.forEach((actual)=>{
+	actualPaths.forEach((actual) => {
 		const path = actual.split("/");
-		if(path[0] === "audio") {
+		if (path[0] === "audio") {
 			actualAudioPaths.add(actual);
 		}
 	});
 
-	const validatedAudioPaths = new Set<string>;
-	expectedAudioPaths.forEach((audioPath)=>{
-		if(actualAudioPaths.has(audioPath+".ogg")) {
-			if(actualAudioPaths.has(audioPath+".m4a")) {
-				validatedAudioPaths.add(audioPath).add(audioPath+".ogg").add(audioPath+".m4a");
-				console.log(audioPath+".ogg");
-			}else if(actualAudioPaths.has(audioPath+".aac")) {
-				validatedAudioPaths.add(audioPath).add(audioPath+".ogg").add(audioPath+".aac");
+	const validatedAudioPaths = new Set<string>();
+	expectedAudioPaths.forEach((audioPath) => {
+		if (actualAudioPaths.has(audioPath + ".ogg")) {
+			if (actualAudioPaths.has(audioPath + ".m4a")) {
+				validatedAudioPaths
+					.add(audioPath)
+					.add(audioPath + ".ogg")
+					.add(audioPath + ".m4a");
+				console.log(audioPath + ".ogg");
+			} else if (actualAudioPaths.has(audioPath + ".aac")) {
+				validatedAudioPaths
+					.add(audioPath)
+					.add(audioPath + ".ogg")
+					.add(audioPath + ".aac");
 			}
 		}
 	});
@@ -208,10 +214,14 @@ function validateZipContents(zip: { getEntries: () => ZipEntry[] }) {
 		};
 	}
 
-	const validatedAudioPaths = validateAudioPaths(expectedPaths,actualPaths);
+	const validatedAudioPaths = validateAudioPaths(expectedPaths, actualPaths);
 
-	const missingPaths = [...expectedPaths].filter((expected) => !actualPaths.has(expected) && !validatedAudioPaths.has(expected));
-	const extraPaths = [...actualPaths].filter((actual) => !expectedPaths.has(actual) && actual !== "library_license.txt" && !validatedAudioPaths.has(actual));
+	const missingPaths = [...expectedPaths].filter(
+		(expected) => !actualPaths.has(expected) && !validatedAudioPaths.has(expected),
+	);
+	const extraPaths = [...actualPaths].filter(
+		(actual) => !expectedPaths.has(actual) && actual !== "library_license.txt" && !validatedAudioPaths.has(actual),
+	);
 
 	if (missingPaths.length > 0 || extraPaths.length > 0) {
 		return {

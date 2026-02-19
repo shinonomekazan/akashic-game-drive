@@ -1728,17 +1728,17 @@ export class App {
 
 				if (result.data.reportId == null) {
 					console.error("通報送信エラー: reportId がレスポンスに含まれていません。", result);
-					alert("送信に失敗しました。時間をおいて再度お試しください。");
+					this.showToast("送信に失敗しました。時間をおいて再度お試しください。", "error");
 					return;
 				}
 
-				alert("通報を送信しました。ご協力ありがとうございました。");
+				this.showToast("通報を送信しました。ご協力ありがとうございました。");
 
 				Modal.getInstance(reportModalElement)?.hide();
 				reportForm.reset();
 			} catch (error) {
 				console.error("送信エラー:", error);
-				alert("送信に失敗しました。時間をおいて再度お試しください。");
+				this.showToast("送信に失敗しました。時間をおいて再度お試しください。", "error");
 			} finally {
 				submitBtn.disabled = false;
 			}

@@ -215,11 +215,18 @@ function validateZipContents(zip: { getEntries: () => ZipEntry[] }) {
 
 	const validatedAudioPaths = validateAudioPaths(expectedPaths, actualPaths);
 
+	const specialPaths = ["library_license.txt"];
+	specialPaths.forEach((specialPath) => {
+		if (actualPaths.has(specialPath)) {
+			expectedPaths.add(specialPath);
+		}
+	});
+
 	const missingPaths = [...expectedPaths].filter(
 		(expected) => !actualPaths.has(expected) && !validatedAudioPaths.has(expected),
 	);
 	const extraPaths = [...actualPaths].filter(
-		(actual) => !expectedPaths.has(actual) && actual !== "library_license.txt" && !validatedAudioPaths.has(actual),
+		(actual) => !expectedPaths.has(actual) && !validatedAudioPaths.has(actual),
 	);
 
 	if (missingPaths.length > 0 || extraPaths.length > 0) {

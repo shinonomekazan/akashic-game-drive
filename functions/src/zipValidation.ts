@@ -119,7 +119,6 @@ function validateAudioPaths(expectedPaths: Set<string>, actualPaths: Set<string>
 					.add(audioPath)
 					.add(audioPath + ".ogg")
 					.add(audioPath + ".m4a");
-				console.log(audioPath + ".ogg");
 			} else if (actualAudioPaths.has(audioPath + ".aac")) {
 				validatedAudioPaths
 					.add(audioPath)

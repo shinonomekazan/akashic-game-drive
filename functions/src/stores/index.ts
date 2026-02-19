@@ -127,6 +127,7 @@ export function storeReport(
 				description: report.description,
 				status: "waiting",
 				createdAt: Timestamp.now(),
+				updatedAt: Timestamp.now(),
 			}),
 		)
 		.then(() => reportDoc.id);

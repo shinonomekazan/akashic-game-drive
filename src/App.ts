@@ -1709,7 +1709,10 @@ export class App {
 
 		reportForm?.addEventListener("submit", async (e: Event) => {
 			e.preventDefault();
-			const category = (document.getElementById("report-category") as HTMLSelectElement).value;
+			const category = (document.getElementById("report-category") as HTMLSelectElement).value as
+				| "spam"
+				| "violation"
+				| "other";
 			const description = (document.getElementById("report-description") as HTMLTextAreaElement).value;
 			submitBtn!.disabled = true;
 

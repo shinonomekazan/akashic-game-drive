@@ -38,7 +38,7 @@ export interface ReportRecord {
 	type: "content";
 	reporterId: string;
 	contentId: string;
-	category: string;
+	category: "spam" | "violation" | "other";
 	description?: string;
 	status: "waiting" | "rejected" | "resolved";
 	createdAt: Timestamp;

@@ -2,7 +2,7 @@ import type { Client } from "./client";
 
 export interface CreateReportInput {
 	contentId: string;
-	category: string;
+	category: "spam" | "violation" | "other";
 	description?: string;
 }
 

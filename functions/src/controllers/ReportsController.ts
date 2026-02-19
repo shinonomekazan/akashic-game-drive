@@ -4,7 +4,6 @@ import BaseController from "./BaseController";
 import * as validators from "express-validator";
 import * as fw from "../fw";
 import * as params from "../params";
-import { Router } from "express";
 import type { ReportRecord } from "../types";
 import { storeReport } from "../stores";
 
@@ -22,25 +21,30 @@ export class ReportsController extends BaseController {
 			fw.params.InstantValidator(
 				[
 					params.headerBearerTokenValidator(),
-					validators.body("contentId").isString().notEmpty(),
-					validators.body("category").isString().notEmpty(),
+					validators.body("contentId").isString().notEmpty().trim(),
+					validators
+						.body("category")
+						.isString()
+						.notEmpty()
+						.trim()
+						.isIn(["spam", "violation", "other"]),
 					validators.body("description").optional().isString(),
 				],
 				(context) =>
 					({
 						authorization: context.req.headers.authorization,
-						contentId: context.req.body.contentId,
-						category: context.req.body.category,
+						contentId:
+							typeof context.req.body.contentId === "string"
+								? context.req.body.contentId.trim()
+								: context.req.body.contentId,
+						category:
+							typeof context.req.body.category === "string"
+								? context.req.body.category.trim()
+								: context.req.body.category,
 						description: context.req.body.description,
 					}) as CreateParams,
 			),
 		];
-	}
-
-	register(basePath: string): Router {
-		const router = super.register(basePath);
-
-		return router;
 	}
 
 	async post(context: Context) {

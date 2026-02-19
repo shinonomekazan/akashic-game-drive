@@ -1581,15 +1581,15 @@ export class App {
 		const reportFormHtml = showReportForm
 			? `
 			<div class="d-flex justify-content-center">
-				<button type="button" class="btn btn-danger mt-4" data-bs-toggle="modal" data-bs-target="#reportModal">
+				<button type="button" class="btn btn-danger mt-4" data-bs-toggle="modal" data-bs-target="#report-modal">
   					このゲームを通報する
 				</button>
 			</div>
-			<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+			<div class="modal fade" id="report-modal" tabindex="-1" aria-labelledby="report-modal-label" aria-hidden="true">
 				<div class="modal-dialog modal-dialog-centered">
 					<div class="modal-content">
 					<div class="modal-header">
-						<h5 class="modal-title" id="reportModalLabel">通報フォーム</h5>
+						<h5 class="modal-title" id="report-modal-label">通報フォーム</h5>
 						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 					</div>
 					<form id="report-form">
@@ -1613,7 +1613,7 @@ export class App {
 						</div>
 						<div class="modal-footer">
 						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-						<button type="submit" id="submit-report-btn" class="btn btn-danger">通報を送信する</button>
+						<button type="submit" id="report-submit-btn" class="btn btn-danger">通報を送信する</button>
 						</div>
 					</form>
 					</div>
@@ -1704,17 +1704,20 @@ export class App {
 			});
 		}
 		const reportForm = utils.qs<HTMLFormElement>("#report-form");
-		const submitBtn = utils.qs<HTMLButtonElement>("#submit-report-btn");
-		const reportModalElement = utils.qs("#reportModal");
+		if (reportForm == null) {
+			console.error("通報フォームがありません");
+			return;
+		}
 
-		reportForm?.addEventListener("submit", async (e: Event) => {
+		reportForm.addEventListener("submit", async (e: Event) => {
 			e.preventDefault();
-			const category = (document.getElementById("report-category") as HTMLSelectElement).value as
-				| "spam"
-				| "violation"
-				| "other";
-			const description = (document.getElementById("report-description") as HTMLTextAreaElement).value;
-			submitBtn!.disabled = true;
+			const categorySelect = utils.qsStrict<HTMLSelectElement>("#report-category", reportForm);
+			const descriptionTextarea = utils.qsStrict<HTMLTextAreaElement>("#report-description", reportForm);
+			const submitBtn = utils.qsStrict<HTMLButtonElement>("#report-submit-btn", reportForm);
+			const reportModalElement = utils.qsStrict<HTMLElement>("#report-modal");
+			const category = categorySelect.value as "spam" | "violation" | "other";
+			const description = descriptionTextarea.value;
+			submitBtn.disabled = true;
 
 			try {
 				const result = await createReport(this.apiClient, {
@@ -1722,15 +1725,22 @@ export class App {
 					category,
 					description,
 				});
-				if (result.data.reportId == null) return;
+
+				if (result.data.reportId == null) {
+					console.error("通報送信エラー: reportId がレスポンスに含まれていません。", result);
+					alert("送信に失敗しました。時間をおいて再度お試しください。");
+					return;
+				}
+
 				alert("通報を送信しました。ご協力ありがとうございました。");
-				Modal.getInstance(reportModalElement!)?.hide();
+
+				Modal.getInstance(reportModalElement)?.hide();
 				reportForm.reset();
 			} catch (error) {
 				console.error("送信エラー:", error);
 				alert("送信に失敗しました。時間をおいて再度お試しください。");
 			} finally {
-				submitBtn!.disabled = false;
+				submitBtn.disabled = false;
 			}
 		});
 	}

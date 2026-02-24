@@ -65,8 +65,9 @@ function isDirectoryEntry(entry: ZipEntry): boolean {
 function collectExpectedPaths(gameJson: Record<string, unknown>) {
 	const paths = new Set<string>();
 	const invalidPaths: string[] = [];
+	const validatedAudioPaths = new Set<string>();
 
-	const addPath = (value: unknown) => {
+	const addPath = (value: unknown,type?: unknown, hint?: { extensions?: unknown[]}) => {
 		if (typeof value !== "string") return;
 		const normalized = normalizeZipPath(value);
 		if (!normalized) {
@@ -74,61 +75,41 @@ function collectExpectedPaths(gameJson: Record<string, unknown>) {
 			return;
 		}
 		paths.add(normalized);
+		if(typeof type==="string" && type === "audio" && typeof hint==="object" && Array.isArray(hint.extensions)) {
+			if(hint.extensions.includes(".ogg")){
+				if(hint.extensions.includes(".aac")) {
+					validatedAudioPaths
+					.add(normalized)
+					.add(normalized + ".ogg")
+					.add(normalized + ".aac");
+				}else if(hint.extensions.includes(".m4a")) {
+					validatedAudioPaths
+					.add(normalized)
+					.add(normalized + ".ogg")
+					.add(normalized + ".m4a");
+				}
+			}
+		}
 	};
 
-	const assets = (gameJson.assets ?? gameJson.asset) as Record<string, { path?: unknown }> | undefined;
+	const assets = (gameJson.assets ?? gameJson.asset) as Record<string, { path?: unknown,type?: unknown, hint?: { extensions?: unknown[]} }> | undefined;
 	if (assets && typeof assets === "object") {
 		Object.values(assets).forEach((asset) => {
 			if (typeof asset?.path === "string" && asset.path.trim().toLowerCase().endsWith(".zip")) {
 				invalidPaths.push(asset.path);
 				return;
 			}
-			addPath(asset?.path);
+			addPath(asset?.path,asset?.type,asset?.hint);
 		});
 	}
 
 	const globalScripts = gameJson.globalScripts as Record<string, unknown> | undefined;
 	if (globalScripts && typeof globalScripts === "object") {
-		Object.values(globalScripts).forEach(addPath);
+		Object.values(globalScripts).forEach((value) => {
+			addPath(value);
+		});
 	}
-
-	return { paths, invalidPaths };
-}
-
-function validateAudioPaths(expectedPaths: Set<string>, actualPaths: Set<string>) {
-	const expectedAudioPaths = new Set<string>();
-	const actualAudioPaths = new Set<string>();
-	expectedPaths.forEach((expected) => {
-		const path = expected.split("/");
-		if (path[0] === "audio") {
-			expectedAudioPaths.add(expected);
-		}
-	});
-	actualPaths.forEach((actual) => {
-		const path = actual.split("/");
-		if (path[0] === "audio") {
-			actualAudioPaths.add(actual);
-		}
-	});
-
-	const validatedAudioPaths = new Set<string>();
-	expectedAudioPaths.forEach((audioPath) => {
-		if (actualAudioPaths.has(audioPath + ".ogg")) {
-			if (actualAudioPaths.has(audioPath + ".m4a")) {
-				validatedAudioPaths
-					.add(audioPath)
-					.add(audioPath + ".ogg")
-					.add(audioPath + ".m4a");
-			} else if (actualAudioPaths.has(audioPath + ".aac")) {
-				validatedAudioPaths
-					.add(audioPath)
-					.add(audioPath + ".ogg")
-					.add(audioPath + ".aac");
-			}
-		}
-	});
-
-	return validatedAudioPaths;
+	return { paths, invalidPaths ,validatedAudioPaths };
 }
 
 function scanForDisallowedUsage(entries: NormalizedEntry[]) {
@@ -200,7 +181,7 @@ function validateZipContents(zip: { getEntries: () => ZipEntry[] }) {
 		};
 	}
 
-	const { paths: expectedPaths, invalidPaths } = collectExpectedPaths(gameJson);
+	const { paths: expectedPaths, invalidPaths, validatedAudioPaths } = collectExpectedPaths(gameJson);
 	expectedPaths.add("game.json");
 
 	if (invalidEntryPaths.length > 0 || invalidPaths.length > 0) {
@@ -212,8 +193,6 @@ function validateZipContents(zip: { getEntries: () => ZipEntry[] }) {
 			entries: normalizedEntries,
 		};
 	}
-
-	const validatedAudioPaths = validateAudioPaths(expectedPaths, actualPaths);
 
 	const specialPaths = ["library_license.txt"];
 	specialPaths.forEach((specialPath) => {
@@ -230,6 +209,9 @@ function validateZipContents(zip: { getEntries: () => ZipEntry[] }) {
 	);
 
 	if (missingPaths.length > 0 || extraPaths.length > 0) {
+		console.log(237); //audioフォルダ意外も対象に
+		console.log(missingPaths);
+		console.log(extraPaths);
 		return {
 			result: {
 				state: "failed",

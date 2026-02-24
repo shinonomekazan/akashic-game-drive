@@ -209,9 +209,6 @@ function validateZipContents(zip: { getEntries: () => ZipEntry[] }) {
 	);
 
 	if (missingPaths.length > 0 || extraPaths.length > 0) {
-		console.log(237); //audioフォルダ意外も対象に
-		console.log(missingPaths);
-		console.log(extraPaths);
 		return {
 			result: {
 				state: "failed",

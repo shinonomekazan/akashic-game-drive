@@ -2254,8 +2254,15 @@ export class App {
 		const params = new URLSearchParams(window.location.search);
 		const nextPath = params.get("next");
 		const redirectPath = nextPath && nextPath.startsWith("/") ? nextPath : "/my";
-		if (signedIn) {
+		const navigateAfterLogin = () => {
+			if (redirectPath.startsWith("/manage")) {
+				window.location.href = redirectPath;
+				return;
+			}
 			utils.navigateTo(redirectPath);
+		};
+		if (signedIn) {
+			navigateAfterLogin();
 			return;
 		}
 		this.setContent(`
@@ -2282,7 +2289,7 @@ export class App {
 			try {
 				await signInWithGoogle(this.firebase);
 				this.showToast("ログインしました");
-				utils.navigateTo(redirectPath);
+				navigateAfterLogin();
 			} catch (err) {
 				this.showToast((err as Error).message, "error");
 			}

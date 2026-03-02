@@ -83,3 +83,11 @@ export interface AppState {
 	mySentFeedbackDisplayCount: number;
 	refreshMyFeedbacks: boolean;
 }
+
+export interface ManageUser {
+	id: string;
+	role: "administrator";
+	name: string;
+	createdAt: Timestamp;
+	updatedAt: Timestamp;
+}

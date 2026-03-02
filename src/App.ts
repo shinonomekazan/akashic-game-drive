@@ -138,6 +138,13 @@ export class App {
 		const element = document.createElement("div");
 		document.body.style.overflowY = "hidden";
 		element.classList.add("akashic-game-drive-splash");
+		const finalizeSplash = () => {
+			if (element.parentElement) {
+				element.remove();
+			}
+			document.body.style.overflowY = "auto";
+			sessionStorage.setItem("akashic-game-drive-splash-screen", "shown");
+		};
 		const image = new Image();
 		image.addEventListener(
 			"load",
@@ -146,9 +153,16 @@ export class App {
 				await utils.wait(1000);
 				await utils.wait(1000);
 				element.classList.add("fade-out");
+				element.style.pointerEvents = "none";
 				await utils.wait(1000);
-				document.body.style.overflowY = "auto";
-				sessionStorage.setItem("akashic-game-drive-splash-screen", "shown");
+				finalizeSplash();
+			},
+			{ once: true },
+		);
+		image.addEventListener(
+			"error",
+			() => {
+				finalizeSplash();
 			},
 			{ once: true },
 		);

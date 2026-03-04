@@ -44,3 +44,10 @@ export interface ReportRecord {
 	createdAt?: Timestamp | null;
 	updatedAt?: Timestamp | null;
 }
+
+export interface ManageUser {
+	id: string;
+	role: "administrator";
+	createdAt?: Timestamp | null;
+	updatedAt?: Timestamp | null;
+}

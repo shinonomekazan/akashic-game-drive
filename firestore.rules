@@ -11,9 +11,13 @@ service cloud.firestore {
 				&& request.auth.uid == userId;
 		}
 
+		function isAdmin() {
+			return request.auth.token.role == "admin";
+		}
+
 		match /users/{userId} {
-			allow read: if isOwner(userId);
-			allow write: if isOwner(userId);
+			allow list: if isAdmin();
+			allow read, write: if isOwner(userId) || isAdmin();
 
 			match /feedbacks/{feedbackId} {
 				allow read: if isOwner(userId);

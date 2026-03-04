@@ -62,6 +62,10 @@
 			{
 				"source": "/contents/*",
 				"destination": "/index.html"
+			},
+			{
+				"source": "/manage/users/*",
+				"destination": "/manage/users/index.html"
 			}
 		],
 		"headers": [

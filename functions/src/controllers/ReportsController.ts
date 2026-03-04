@@ -23,12 +23,7 @@ export class ReportsController extends BaseController {
 				[
 					params.headerBearerTokenValidator(),
 					validators.body("contentId").isString().notEmpty().trim(),
-					validators
-						.body("category")
-						.isString()
-						.notEmpty()
-						.trim()
-						.isIn(["spam", "violation", "other"]),
+					validators.body("category").isString().notEmpty().trim().isIn(["spam", "violation", "other"]),
 					validators.body("description").optional().isString(),
 				],
 				(context) =>

@@ -1,4 +1,4 @@
-import { DocumentSnapshot, Firestore } from "firebase/firestore";
+import { DocumentData, DocumentSnapshot, Firestore, QuerySnapshot } from "firebase/firestore";
 import { DetailHandler } from "./types";
 import { listUser } from "../resolvers";
 import { qsStrict } from "../utils";
@@ -39,24 +39,34 @@ export class UserHandler implements DetailHandler {
 			};
 
 			readMoreBtn.disabled = true;
-			const snapshot = await this.listUser(LIMIT, lastDoc, filter);
-
-			snapshot.docs.forEach((doc) => {
-				const data = doc.data() as UserProfile;
-				const row = document.createElement("tr");
-				row.style.cursor = "pointer";
-				row.innerHTML = `
-                    <td>${doc.id}</td>
-                    <td>${data.name ?? ""}</td>
-                `;
-				row.appendChild(createBasicActionColumn());
-				tbody.appendChild(row);
-			});
-
-			lastDoc = snapshot.docs[snapshot.docs.length - 1];
-			const hasMore = snapshot.docs.length === LIMIT;
-			readMoreBtn.disabled = !hasMore;
-			readMoreBtn.style.display = hasMore ? "" : "none";
+			let snapshot: QuerySnapshot<DocumentData> | undefined;
+			try {
+				snapshot = await this.listUser(LIMIT, lastDoc, filter);
+				snapshot.docs.forEach((doc) => {
+					const data = doc.data() as UserProfile;
+					const row = document.createElement("tr");
+					row.style.cursor = "pointer";
+					const idCell = document.createElement("td");
+					idCell.textContent = doc.id;
+					row.appendChild(idCell);
+					const nameCell = document.createElement("td");
+					nameCell.textContent = data.name ?? "";
+					row.appendChild(nameCell);
+					row.appendChild(createBasicActionColumn());
+					tbody.appendChild(row);
+				});
+				lastDoc = snapshot.docs[snapshot.docs.length - 1];
+				const hasMore = snapshot.docs.length === LIMIT;
+				readMoreBtn.disabled = !hasMore;
+				readMoreBtn.style.display = hasMore ? "" : "none";
+			} catch (error) {
+				console.error("ユーザ一覧の取得に失敗しました:", error);
+				window.alert("ユーザ一覧の取得に失敗しました。時間をおいて再度お試しください。");
+			} finally {
+				if (snapshot == null) {
+					readMoreBtn.disabled = false;
+				}
+			}
 		};
 
 		filterBtn.addEventListener("click", () => loadUsers(true));

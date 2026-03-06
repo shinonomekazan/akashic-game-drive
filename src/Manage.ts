@@ -1,4 +1,4 @@
-import { watchAuthChanges, User as FirebaseUser } from "./auth";
+import { watchAuthChanges, type User as FirebaseUser } from "./auth";
 import { App } from "./App";
 import * as utils from "./utils";
 import { manage } from "./resolvers";
@@ -59,7 +59,7 @@ export class Manage extends App {
 							<div class="manage-top mb-4">
 								<h1 class="manage-title">
 									<span class="manage-title-main">ニコ生ゲーム置き場（仮）</span>
-									<span class="manage-title-sub">管理ツール – ユーザー管</span>
+									<span class="manage-title-sub">管理ツール – ユーザー管理</span>
 								</h1>
 								<p class="manage-error-message">このツールを利用する権限がありません</p>
 							</div>
@@ -70,11 +70,11 @@ export class Manage extends App {
 				return;
 			}
 			usersContent.classList.remove("d-none");
-		});
 
-		const usersTableList = utils.qsStrict<HTMLTableElement>("#usersTableList");
-		const userHandler = new UserHandler(this.firebase.firestore, usersTableList);
-		await userHandler.refreshUser();
+			const usersTableList = utils.qsStrict<HTMLTableElement>("#usersTableList");
+			const userHandler = new UserHandler(this.firebase.firestore, usersTableList);
+			await userHandler.refreshUser();
+		});
 	}
 
 	async canUseManageTool(user: FirebaseUser): Promise<boolean> {

@@ -25,4 +25,4 @@ export async function signOutCurrentUser(firebase: FirebaseInstance): Promise<vo
 	await signOut(firebase.auth);
 }
 
-export { User };
+export type { User };

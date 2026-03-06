@@ -11,6 +11,7 @@ export function register(app: App) {
 		"/users": controllers.UsersController,
 		"/contents": controllers.ContentsController,
 		"/reports": controllers.ReportsController,
+		"/manage": controllers.ManageController,
 	});
 
 	app.use(fw.middlewares.UndefinedRouteHandler);

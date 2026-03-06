@@ -1,4 +1,17 @@
-import { collection, doc, getDoc, getDocs, limit, orderBy, query, type Firestore } from "firebase/firestore";
+import {
+	collection,
+	doc,
+	DocumentSnapshot,
+	getDoc,
+	getDocs,
+	limit,
+	orderBy,
+	query,
+	QueryConstraint,
+	startAfter,
+	where,
+	type Firestore,
+} from "firebase/firestore";
 import type { UserProfile } from "../types";
 import * as manage from "./manage";
 
@@ -35,4 +48,30 @@ export async function listMyFeedbacks(firestore: Firestore, userId: string, limi
 			? query(collectionRef, orderBy("createdAt", "desc"), limit(limitCount))
 			: query(collectionRef, orderBy("createdAt", "desc"));
 	return getDocs(queryRef);
+}
+
+export async function listUser(
+	firestore: Firestore,
+	limitCount: number,
+	lastDoc?: DocumentSnapshot,
+	filter?: { id?: string; username?: string },
+) {
+	const collectionRef = collection(firestore, "users");
+	const constraints: QueryConstraint[] = [];
+
+	if (filter?.id) {
+		constraints.push(where("__name__", ">=", filter.id));
+		constraints.push(where("__name__", "<=", filter.id + "\uf8ff"));
+	} else if (filter?.username) {
+		constraints.push(orderBy("name"));
+		constraints.push(where("name", ">=", filter.username));
+		constraints.push(where("name", "<=", filter.username + "\uf8ff"));
+	} else {
+		constraints.push(orderBy("createdAt", "desc"));
+	}
+
+	if (lastDoc) constraints.push(startAfter(lastDoc));
+	constraints.push(limit(limitCount));
+
+	return getDocs(query(collectionRef, ...constraints));
 }

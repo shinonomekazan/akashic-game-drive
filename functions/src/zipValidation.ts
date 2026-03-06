@@ -67,7 +67,7 @@ function collectExpectedPaths(gameJson: Record<string, unknown>) {
 	const invalidPaths: string[] = [];
 	const validatedAudioPaths = new Set<string>();
 
-	const addPath = (value: unknown,type?: unknown, hint?: { extensions?: unknown[]}) => {
+	const addPath = (value: unknown, type?: unknown, hint?: { extensions?: unknown[] }) => {
 		if (typeof value !== "string") return;
 		const normalized = normalizeZipPath(value);
 		if (!normalized) {
@@ -75,31 +75,38 @@ function collectExpectedPaths(gameJson: Record<string, unknown>) {
 			return;
 		}
 		paths.add(normalized);
-		if(typeof type==="string" && type === "audio" && typeof hint==="object" && Array.isArray(hint.extensions)) {
-			if(hint.extensions.includes(".ogg")){
-				if(hint.extensions.includes(".aac")) {
+		if (
+			typeof type === "string" &&
+			type === "audio" &&
+			typeof hint === "object" &&
+			Array.isArray(hint.extensions)
+		) {
+			if (hint.extensions.includes(".ogg")) {
+				if (hint.extensions.includes(".aac")) {
 					validatedAudioPaths
-					.add(normalized)
-					.add(normalized + ".ogg")
-					.add(normalized + ".aac");
-				}else if(hint.extensions.includes(".m4a")) {
+						.add(normalized)
+						.add(normalized + ".ogg")
+						.add(normalized + ".aac");
+				} else if (hint.extensions.includes(".m4a")) {
 					validatedAudioPaths
-					.add(normalized)
-					.add(normalized + ".ogg")
-					.add(normalized + ".m4a");
+						.add(normalized)
+						.add(normalized + ".ogg")
+						.add(normalized + ".m4a");
 				}
 			}
 		}
 	};
 
-	const assets = (gameJson.assets ?? gameJson.asset) as Record<string, { path?: unknown,type?: unknown, hint?: { extensions?: unknown[]} }> | undefined;
+	const assets = (gameJson.assets ?? gameJson.asset) as
+		| Record<string, { path?: unknown; type?: unknown; hint?: { extensions?: unknown[] } }>
+		| undefined;
 	if (assets && typeof assets === "object") {
 		Object.values(assets).forEach((asset) => {
 			if (typeof asset?.path === "string" && asset.path.trim().toLowerCase().endsWith(".zip")) {
 				invalidPaths.push(asset.path);
 				return;
 			}
-			addPath(asset?.path,asset?.type,asset?.hint);
+			addPath(asset?.path, asset?.type, asset?.hint);
 		});
 	}
 
@@ -109,7 +116,7 @@ function collectExpectedPaths(gameJson: Record<string, unknown>) {
 			addPath(value);
 		});
 	}
-	return { paths, invalidPaths ,validatedAudioPaths };
+	return { paths, invalidPaths, validatedAudioPaths };
 }
 
 function scanForDisallowedUsage(entries: NormalizedEntry[]) {

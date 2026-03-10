@@ -2,6 +2,9 @@ import { ContentRecord, FeedbackRecord, UserProfile, ReportRecord } from "../typ
 import { Firestore, Timestamp } from "@google-cloud/firestore";
 import { eraseUndefined } from "../utils";
 import * as fw from "../fw";
+import * as manage from "./manage";
+
+export { manage };
 
 export function storeUser(firestore: Firestore, user: Omit<UserProfile, "createdAt" | "updatedAt">) {
 	return firestore.runTransaction(async (transaction) => {

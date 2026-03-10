@@ -32,7 +32,7 @@ export async function getUser(firestore: Firestore, uid: string): Promise<UserPr
 	};
 }
 
-export async function listFeedback(firestore: Firestore, userId: string, limitCount?: number) {
+export async function listFeedbacks(firestore: Firestore, userId: string, limitCount?: number) {
 	const collectionRef = collection(firestore, `users/${userId}/feedbacks`);
 	const queryRef =
 		limitCount !== undefined
@@ -74,4 +74,10 @@ export async function listUser(
 	constraints.push(limit(limitCount));
 
 	return getDocs(query(collectionRef, ...constraints));
+}
+
+export async function listContent(firestore: Firestore, ownerId: string) {
+	const collectionRef = collection(firestore, "contents");
+	const queryRef = query(collectionRef, where("ownerId", "==", ownerId));
+	return getDocs(queryRef);
 }

@@ -8,7 +8,7 @@ import { appConfig } from "./config";
 import type { AppConfig } from "./config.types";
 import type { AppState, ContentRecord, FeedbackRecord, UserProfile } from "./types";
 import * as utils from "./utils";
-import { getUser, listFeedback, listMyFeedbacks } from "./resolvers";
+import { getUser, listFeedbacks, listMyFeedbacks } from "./resolvers";
 import { connectFirestoreEmulator } from "firebase/firestore";
 import { connectStorageEmulator, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Client } from "./api/client";
@@ -929,7 +929,7 @@ export class App {
 		}
 		this.state = { ...this.state, contentsLoading: true };
 		try {
-			const feedbackDocs = await listFeedback(this.firebase.firestore, currentUser.uid, limitCount);
+			const feedbackDocs = await listFeedbacks(this.firebase.firestore, currentUser.uid, limitCount);
 			const feedbacks = feedbackDocs.docs.map((doc) => utils.withId<FeedbackRecord>(doc));
 			const senderIds = Array.from(
 				new Set(

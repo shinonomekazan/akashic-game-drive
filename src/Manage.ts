@@ -4,6 +4,7 @@ import * as utils from "./utils";
 import { manage } from "./resolvers";
 import { UserHandler } from "./handlers";
 import * as api from "./api";
+import * as helpers from "./helpers";
 
 type ManageMenuItem = {
 	label: string;
@@ -21,37 +22,31 @@ export class Manage extends App {
 		super();
 	}
 
-	async topPage() {
+	withAuth(defaultPath: string, callback: (user: FirebaseUser, hasPermission: boolean) => Promise<void>) {
 		watchAuthChanges(this.firebase, async (user) => {
 			if (user == null) {
 				const loginUrl = new URL("/login", window.location.origin);
-				loginUrl.searchParams.set("next", window.location.pathname || "/manage/index.html");
+				loginUrl.searchParams.set("next", window.location.pathname || defaultPath);
 				if (utils.isDebugMode()) {
 					loginUrl.searchParams.set("debug", "true");
 				}
 				window.location.href = loginUrl.toString();
 				return;
 			}
-
+			this.apiClient.idTokenFunction = user ? () => user.getIdToken() : undefined;
 			const hasPermission = await this.canUseManageTool(user);
+			await callback(user, hasPermission);
+		});
+	}
+
+	async topPage() {
+		this.withAuth("/manage/index.html", async (_user, hasPermission) => {
 			this.renderManagePage(hasPermission);
 		});
 	}
 
 	async usersPage() {
-		const usersContent = utils.qsStrict<HTMLDivElement>("#usersContent");
-		watchAuthChanges(this.firebase, async (user) => {
-			if (user == null) {
-				const loginUrl = new URL("/login", window.location.origin);
-				loginUrl.searchParams.set("next", window.location.pathname || "/manage/users/index.html");
-				if (utils.isDebugMode()) {
-					loginUrl.searchParams.set("debug", "true");
-				}
-				window.location.href = loginUrl.toString();
-				return;
-			}
-
-			const hasPermission = await this.canUseManageTool(user);
+		this.withAuth("/manage/users/index.html", async (_user, hasPermission) => {
 			if (!hasPermission) {
 				this.setContent(
 					`
@@ -69,11 +64,19 @@ export class Manage extends App {
 				);
 				return;
 			}
+			const usersContent = utils.qsStrict<HTMLDivElement>("#usersContent");
 			usersContent.classList.remove("d-none");
 
 			const usersTableList = utils.qsStrict<HTMLTableElement>("#usersTableList");
-			const userHandler = new UserHandler(this.firebase.firestore, usersTableList);
+			const userHandler = new UserHandler(this.firebase.firestore, usersTableList, this.apiClient);
 			await userHandler.refreshUser();
+			userHandler.addEventListener("refresh", () => {
+				helpers.attachDetailHandler(usersTableList, userHandler);
+			});
+			const openDetailModal = helpers.attachDetailHandler(usersTableList, userHandler);
+			if (openDetailModal == null) throw new Error("DetailModalがありません");
+
+			helpers.attachIdDetailStateHandler(openDetailModal);
 		});
 	}
 

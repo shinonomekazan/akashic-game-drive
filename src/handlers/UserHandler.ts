@@ -155,7 +155,7 @@ export class UserHandler extends EventTarget implements DetailHandler {
 			editBtn.classList.add("btn-primary");
 			editBtn.textContent = "確定";
 			cancelBtn.style.display = "";
-			deleteBtn.disabled = true; // không cho xoá khi đang edit
+			deleteBtn.disabled = true;
 			nameInput.readOnly = false;
 		};
 

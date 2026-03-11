@@ -20,16 +20,21 @@ service cloud.firestore {
 			allow read, write: if isOwner(userId) || isAdmin();
 
 			match /feedbacks/{feedbackId} {
-				allow read: if isOwner(userId);
+				allow read: if isOwner(userId) || isAdmin();
 			}
 
 			match /myFeedbacks/{feedbackId} {
-				allow read: if isOwner(userId);
+				allow read: if isOwner(userId) || isAdmin();
 			}
 		}
 
 		match /manageUsers/{userId} {
 			allow read: if isOwner(userId);
+		}
+
+		match /contents/{contentId} {
+			allow read: if isAdmin();
+			allow write: if isAdmin();
 		}
 	}
 }

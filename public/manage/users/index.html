@@ -53,6 +53,88 @@
 			</div>
 		</div>
 		<div id="toast" aria-live="polite"></div>
+		<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+			<div class="modal-dialog modal-fullscreen">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="detailModalLabel">詳細</h5>
+					</div>
+					<div class="modal-body">
+						<div class="d-flex justify-content-end me-3" id="actionBtn">
+							<button type="button" class="btn me-3" id="editBtn"></button>
+							<button type="button" class="btn btn-danger" id="deleteBtn">削除</button>
+						</div>
+						<div class="d-flex justify-content-center mb-4" id="avatarIcon"></div>
+						<form id="detailForm" class="w-25 mx-auto mb-3">
+							<div class="mb-3">
+								<label for="uid" class="form-label">ID</label>
+								<input type="text" class="form-control" name="uid" id="uid" readonly />
+							</div>
+							<div class="mb-3">
+								<label for="name" class="form-label">名前</label>
+								<input type="text" class="form-control" name="name" id="name" readonly />
+							</div>
+							<div class="mb-3">
+								<label for="createdAt" class="form-label">作成日時</label>
+								<input type="text" class="form-control" name="createdAt" id="createdAt" readonly />
+							</div>
+							<div class="mb-3">
+								<label for="updatedAt" class="form-label">更新日時</label>
+								<input type="text" class="form-control" name="updatedAt" id="updatedAt" readonly />
+							</div>
+						</form>
+						<div class="my-4">
+							<h3>投稿コンテンツ</h3>
+							<table id="contentsTableList" class="table table-striped">
+								<thead>
+									<tr class="table-dark">
+										<th>ID</th>
+										<th>表題</th>
+										<th>描写</th>
+										<th>態</th>
+										<th>警告</th>
+									</tr>
+								</thead>
+								<tbody></tbody>
+							</table>
+						</div>
+						<div class="my-4">
+							<h3>送信フィードバック</h3>
+							<table id="myFeedbacksTableList" class="table table-striped">
+								<thead>
+									<tr class="table-dark">
+										<th>ID</th>
+										<th>受信者ID</th>
+										<th>表題</th>
+										<th>ディテール</th>
+										<th>内コンテンツID</th>
+									</tr>
+								</thead>
+								<tbody></tbody>
+							</table>
+						</div>
+						<div class="my-4">
+							<h3>受信フィードバック</h3>
+							<table id="feedbacksTableList" class="table table-striped">
+								<thead>
+									<tr class="table-dark">
+										<th>ID</th>
+										<th>送信者ID</th>
+										<th>表題</th>
+										<th>ディテール</th>
+										<th>内コンテンツID</th>
+									</tr>
+								</thead>
+								<tbody></tbody>
+							</table>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+					</div>
+				</div>
+			</div>
+		</div>
 		<script>
 			const tool = new manage.Manage();
 			document.addEventListener("DOMContentLoaded", () => {

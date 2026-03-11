@@ -1,17 +1,30 @@
 import { DocumentData, DocumentSnapshot, Firestore, QuerySnapshot } from "firebase/firestore";
 import { DetailHandler } from "./types";
-import { listUser } from "../resolvers";
+import { getUser, listContent, listFeedbacks, listMyFeedbacks, listUser } from "../resolvers";
 import { qsStrict } from "../utils";
-import { UserProfile } from "../types";
-import { createBasicActionColumn } from "../helper";
+import { ContentRecord, FeedbackRecord, UserProfile } from "../types";
+import {
+	createBasicActionColumn,
+	formToObject,
+	getOrCreateModal,
+	pushQueryState,
+	resetBtn,
+	setFormValuesByPropsWithTimeConvert,
+} from "../helpers";
+import { convertContentToHtmlRow, convertFeedbackToHtmlRow, convertMyFeedbackToHtmlRow } from "../converters";
+import { deleteUser, updateUser } from "../api/manage";
+import { Client } from "../api/client";
 
-export class UserHandler implements DetailHandler {
+export class UserHandler extends EventTarget implements DetailHandler {
 	firestore: Firestore;
 	usersTableList: HTMLTableElement;
+	api: Client;
 
-	constructor(firestore: Firestore, usersTableList: HTMLTableElement) {
+	constructor(firestore: Firestore, usersTableList: HTMLTableElement, api: Client) {
+		super();
 		this.usersTableList = usersTableList;
 		this.firestore = firestore;
+		this.api = api;
 	}
 
 	async listUser(limitCount: number, lastDoc?: DocumentSnapshot, filter?: { id?: string; username?: string }) {
@@ -20,7 +33,7 @@ export class UserHandler implements DetailHandler {
 
 	async refreshUser() {
 		const LIMIT = 20;
-		const readMoreBtn = qsStrict<HTMLButtonElement>("#readMoreBtn");
+		let readMoreBtn = qsStrict<HTMLButtonElement>("#readMoreBtn");
 		const filterBtn = qsStrict<HTMLButtonElement>("#filterUser");
 		const idInput = qsStrict<HTMLInputElement>("#searchUserId input");
 		const usernameInput = qsStrict<HTMLInputElement>("#searchUserName input");
@@ -51,6 +64,7 @@ export class UserHandler implements DetailHandler {
 					row.appendChild(idCell);
 					const nameCell = document.createElement("td");
 					nameCell.textContent = data.name ?? "";
+					row.dataset.id = doc.id;
 					row.appendChild(nameCell);
 					row.appendChild(createBasicActionColumn());
 					tbody.appendChild(row);
@@ -69,12 +83,126 @@ export class UserHandler implements DetailHandler {
 			}
 		};
 
-		filterBtn.addEventListener("click", () => loadUsers(true));
+		const freshFilterBtn = resetBtn(filterBtn);
+		readMoreBtn = resetBtn(readMoreBtn);
+
+		freshFilterBtn.addEventListener("click", () => loadUsers(true));
 		readMoreBtn.addEventListener("click", () => loadUsers());
 		await loadUsers();
 	}
 
 	async onDetail(form: HTMLFormElement, id: string): Promise<void> {
-		console.log("ユーザID:", id);
+		pushQueryState({ id });
+		const userDoc = await getUser(this.firestore, id);
+		const name = (userDoc as UserProfile)?.name ?? "";
+		setFormValuesByPropsWithTimeConvert(form, userDoc!, ["uid", "name", "createdAt", "updatedAt"]);
+
+		const contentsTableList = qsStrict<HTMLDivElement>("#contentsTableList");
+		const tbody = qsStrict<HTMLTableSectionElement>("tbody", contentsTableList);
+		tbody.innerHTML = "";
+		const contentDoc = await listContent(this.firestore, id);
+		contentDoc.docs.forEach((doc) => {
+			const contentData = { id: doc.id, ...doc.data() } as ContentRecord;
+			const tr = convertContentToHtmlRow(contentData);
+			tbody.appendChild(tr);
+		});
+
+		const myFeedbacksTableList = qsStrict<HTMLTableElement>("#myFeedbacksTableList");
+		const myFeedbacksTbody = qsStrict<HTMLTableSectionElement>("tbody", myFeedbacksTableList);
+		myFeedbacksTbody.innerHTML = "";
+		const myFeedbacksDoc = await listMyFeedbacks(this.firestore, id);
+		myFeedbacksDoc.docs.forEach((doc) => {
+			const feedbackData = { id: doc.id, ...doc.data() } as FeedbackRecord;
+			const tr = convertMyFeedbackToHtmlRow(feedbackData);
+			myFeedbacksTbody.appendChild(tr);
+		});
+
+		const feedbacksTableList = qsStrict<HTMLTableElement>("#feedbacksTableList");
+		const feedbacksTbody = qsStrict<HTMLTableSectionElement>("tbody", feedbacksTableList);
+		feedbacksTbody.innerHTML = "";
+		const feedbacksDoc = await listFeedbacks(this.firestore, id);
+		feedbacksDoc.docs.forEach((doc) => {
+			const feedbackData = { id: doc.id, ...doc.data() } as FeedbackRecord;
+			const tr = convertFeedbackToHtmlRow(feedbackData);
+			feedbacksTbody.appendChild(tr);
+		});
+
+		let editBtn = resetBtn(qsStrict<HTMLButtonElement>("#editBtn"));
+		let deleteBtn = resetBtn(qsStrict<HTMLButtonElement>("#deleteBtn"));
+
+		document.getElementById("cancelBtn")?.remove();
+		const cancelBtn = document.createElement("button");
+		cancelBtn.id = "cancelBtn";
+		cancelBtn.type = "button";
+		cancelBtn.className = "btn btn-secondary me-3";
+		cancelBtn.textContent = "取消";
+		cancelBtn.style.display = "none";
+		editBtn.insertAdjacentElement("beforebegin", cancelBtn);
+
+		const nameInput = qsStrict<HTMLInputElement>("input[name=name]", form);
+
+		const setViewMode = () => {
+			editBtn.classList.remove("btn-primary");
+			editBtn.classList.add("btn-secondary");
+			editBtn.textContent = "編集";
+			cancelBtn.style.display = "none";
+			deleteBtn.disabled = false;
+			nameInput.readOnly = true;
+		};
+
+		const setEditMode = () => {
+			editBtn.classList.remove("btn-secondary");
+			editBtn.classList.add("btn-primary");
+			editBtn.textContent = "確定";
+			cancelBtn.style.display = "";
+			deleteBtn.disabled = true;
+			nameInput.readOnly = false;
+		};
+
+		setViewMode();
+
+		editBtn.addEventListener("click", async () => {
+			if (editBtn.textContent === "編集") {
+				setEditMode();
+			} else {
+				try {
+					await updateUser(this.api, id, formToObject(form));
+				} catch (error) {
+					throw error;
+				}
+				location.reload();
+			}
+		});
+
+		cancelBtn.addEventListener("click", () => {
+			setFormValuesByPropsWithTimeConvert(form, userDoc!, ["uid", "name", "createdAt", "updatedAt"]);
+			setViewMode();
+		});
+
+		deleteBtn.addEventListener("click", async () => {
+			const confirmed1 = window.confirm(`${name} (${id}) を削除します。よろしいですか？`);
+			if (!confirmed1) return;
+
+			const confirmed2 = window.confirm("削除操作は元に戻せません。本当に実行してよろしいですか？");
+			if (!confirmed2) return;
+
+			try {
+				deleteBtn.disabled = true;
+				await deleteUser(this.api, id);
+				const modalElement = document.getElementById("detailModal")!;
+				const bsModal = getOrCreateModal(modalElement);
+				bsModal.hide();
+				pushQueryState({ id: undefined });
+				await this.refreshUser();
+			} catch (error) {
+				console.error("削除に失敗しました:", error);
+				window.alert("削除に失敗しました。時間をおいて再度お試しください。");
+				deleteBtn.disabled = false;
+			}
+		});
+	}
+
+	onCloseModal(): void {
+		pushQueryState({ id: undefined });
 	}
 }

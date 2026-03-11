@@ -11,7 +11,7 @@ import {
 	resetBtn,
 	setFormValuesByPropsWithTimeConvert,
 } from "../helpers";
-import { convertContentToHtmlRow, convertFeebackToHtmlRow, convertMyFeebackToHtmlRow } from "../converters";
+import { convertContentToHtmlRow, convertFeedbackToHtmlRow, convertMyFeedbackToHtmlRow } from "../converters";
 import { deleteUser, updateUser } from "../api/manage";
 import { Client } from "../api/client";
 
@@ -33,7 +33,7 @@ export class UserHandler extends EventTarget implements DetailHandler {
 
 	async refreshUser() {
 		const LIMIT = 20;
-		const readMoreBtn = qsStrict<HTMLButtonElement>("#readMoreBtn");
+		let readMoreBtn = qsStrict<HTMLButtonElement>("#readMoreBtn");
 		const filterBtn = qsStrict<HTMLButtonElement>("#filterUser");
 		const idInput = qsStrict<HTMLInputElement>("#searchUserId input");
 		const usernameInput = qsStrict<HTMLInputElement>("#searchUserName input");
@@ -84,10 +84,10 @@ export class UserHandler extends EventTarget implements DetailHandler {
 		};
 
 		const freshFilterBtn = resetBtn(filterBtn);
-		const freshReadMoreBtn = resetBtn(readMoreBtn);
+		readMoreBtn = resetBtn(readMoreBtn);
 
 		freshFilterBtn.addEventListener("click", () => loadUsers(true));
-		freshReadMoreBtn.addEventListener("click", () => loadUsers());
+		readMoreBtn.addEventListener("click", () => loadUsers());
 		await loadUsers();
 	}
 
@@ -107,23 +107,23 @@ export class UserHandler extends EventTarget implements DetailHandler {
 			tbody.appendChild(tr);
 		});
 
-		const myFeedbacksTableList = qsStrict<HTMLDivElement>("#myFeedbacksTableList");
+		const myFeedbacksTableList = qsStrict<HTMLTableElement>("#myFeedbacksTableList");
 		const myFeedbacksTbody = qsStrict<HTMLTableSectionElement>("tbody", myFeedbacksTableList);
 		myFeedbacksTbody.innerHTML = "";
 		const myFeedbacksDoc = await listMyFeedbacks(this.firestore, id);
-		myFeedbacksDoc.docs.forEach(async (doc) => {
+		myFeedbacksDoc.docs.forEach((doc) => {
 			const feedbackData = { id: doc.id, ...doc.data() } as FeedbackRecord;
-			const tr = convertMyFeebackToHtmlRow(feedbackData);
+			const tr = convertMyFeedbackToHtmlRow(feedbackData);
 			myFeedbacksTbody.appendChild(tr);
 		});
 
-		const feedbacksTableList = qsStrict<HTMLDivElement>("#feedbacksTableList");
+		const feedbacksTableList = qsStrict<HTMLTableElement>("#feedbacksTableList");
 		const feedbacksTbody = qsStrict<HTMLTableSectionElement>("tbody", feedbacksTableList);
 		feedbacksTbody.innerHTML = "";
 		const feedbacksDoc = await listFeedbacks(this.firestore, id);
-		feedbacksDoc.docs.forEach(async (doc) => {
+		feedbacksDoc.docs.forEach((doc) => {
 			const feedbackData = { id: doc.id, ...doc.data() } as FeedbackRecord;
-			const tr = convertFeebackToHtmlRow(feedbackData);
+			const tr = convertFeedbackToHtmlRow(feedbackData);
 			feedbacksTbody.appendChild(tr);
 		});
 

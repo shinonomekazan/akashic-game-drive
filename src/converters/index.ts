@@ -13,7 +13,7 @@ export function convertContentToHtmlRow(content: ContentRecord) {
 	return tr;
 }
 
-export function convertMyFeebackToHtmlRow(feedback: FeedbackRecord) {
+export function convertMyFeedbackToHtmlRow(feedback: FeedbackRecord) {
 	const tr = document.createElement("tr");
 	tr.appendChild(createTextTd(feedback.id));
 	tr.appendChild(createTextTd(feedback.receiverId));
@@ -24,7 +24,7 @@ export function convertMyFeebackToHtmlRow(feedback: FeedbackRecord) {
 	return tr;
 }
 
-export function convertFeebackToHtmlRow(feedback: FeedbackRecord) {
+export function convertFeedbackToHtmlRow(feedback: FeedbackRecord) {
 	const tr = document.createElement("tr");
 	tr.appendChild(createTextTd(feedback.id));
 	tr.appendChild(createTextTd(feedback.senderId));

@@ -33,7 +33,7 @@ service cloud.firestore {
 		}
 
 		match /contents/{contentId} {
-			allow read: if true;
+			allow read: if isAdmin();
 			allow write: if isAdmin();
 		}
 	}

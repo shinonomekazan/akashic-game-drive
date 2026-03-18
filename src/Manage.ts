@@ -110,13 +110,11 @@ export class Manage extends App {
 			const reportHandler = new ReportDetailHandler(this.firebase.firestore, this.apiClient, () =>
 				crudHandler.refreshReport(),
 			);
-			reportHandler.addEventListener("refresh", () => {
-				helpers.attachDetailHandler(reportsTableList, reportHandler);
-			});
 			crudHandler.addEventListener("refresh", () => {
 				helpers.attachCRUDButtonHandler(document.body, crudHandler);
 			});
 			helpers.attachCRUDHandler(document.body, crudHandler);
+			helpers.attachDetailHandler(reportsTableList, reportHandler);
 			const openDetailModal = helpers.attachDetailHandler(reportsTableList, reportHandler);
 			if (openDetailModal == null) throw new Error("DetailModalがありません");
 			helpers.attachIdDetailStateHandler(openDetailModal);

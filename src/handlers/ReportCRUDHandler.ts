@@ -46,7 +46,6 @@ export class ReportCRUDHandler extends EventTarget implements CRUDHandler {
 		const descriptionInput = qsStrict<HTMLInputElement>("#searchReportDescription input");
 		let lastDoc: DocumentSnapshot | undefined = undefined;
 		const tbody = qsStrict<HTMLTableSectionElement>("tbody", this.reportsTableList);
-		tbody.innerHTML = "";
 		const getSelectedCheckboxValues = (name: string): string[] => {
 			return Array.from(document.querySelectorAll<HTMLInputElement>(`input[name="${name}"]:checked`)).map(
 				(cb) => cb.value,
@@ -141,6 +140,8 @@ export class ReportCRUDHandler extends EventTarget implements CRUDHandler {
 		const { id, status } = formToObject<ReportRecord>(form);
 		try {
 			await updateReport(this.api, id, { status });
+			const tbody = qsStrict<HTMLTableSectionElement>("tbody", this.reportsTableList);
+			tbody.innerHTML = "";
 			await this.refreshReport();
 		} catch (error) {
 			console.error("更新に失敗しました:", error);
@@ -156,6 +157,8 @@ export class ReportCRUDHandler extends EventTarget implements CRUDHandler {
 		const { id } = formToObject<ReportRecord>(form);
 		try {
 			await deleteReport(this.api, id);
+			const tbody = qsStrict<HTMLTableSectionElement>("tbody", this.reportsTableList);
+			tbody.innerHTML = "";
 			await this.refreshReport();
 		} catch (error) {
 			console.error("削除に失敗しました:", error);

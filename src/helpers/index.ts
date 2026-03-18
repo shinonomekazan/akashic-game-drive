@@ -1,6 +1,7 @@
-import { DetailHandler } from "../handlers/types";
+import { CRUDHandler, DetailHandler } from "../handlers/types";
 import * as bootstrap from "bootstrap";
 import { formatTimestamp } from "../utils";
+import { CallApiError } from "../api/client";
 
 export function createButton(type: "button" | "submit" | "reset", text: string) {
 	const tag = document.createElement("button");
@@ -68,11 +69,19 @@ export async function handleOpenModeModal(
 	mode: string,
 	modalElement: HTMLElement,
 	form: HTMLFormElement,
-	handler: DetailHandler,
+	handler: DetailHandler | CRUDHandler,
 	id?: string,
 ) {
 	const modal = getOrCreateModal(modalElement);
 	switch (mode) {
+		case "edit":
+			if (id == null) throw new Error("IDが無い状態でEditが呼び出されました");
+			await (handler as CRUDHandler).onEdit(form, id);
+			break;
+		case "delete":
+			if (id == null) throw new Error("IDが無い状態でDeleteが呼び出されました");
+			await (handler as CRUDHandler).onDelete(form, id);
+			break;
 		case "detail":
 			if (id == null) throw new Error("IDが無い状態でDetailが呼び出されました");
 			await (handler as DetailHandler).onDetail(form, id);
@@ -215,4 +224,78 @@ export function resetBtn<T extends HTMLElement>(el: T): T {
 	const clone = el.cloneNode(true) as T;
 	el.replaceWith(clone);
 	return clone;
+}
+
+export function attachCRUDButtonHandler(parent: HTMLElement, handler: CRUDHandler) {
+	["edit", "delete", "append"].forEach((mode) => {
+		const modalElement = document.querySelector<HTMLElement>(`#${mode}Modal`);
+		if (modalElement == null) {
+			return;
+		}
+
+		const form = modalElement.querySelector<HTMLFormElement>(`#${mode}Form`);
+		if (form == null) {
+			throw new Error(`${mode}にフォームがありません。`);
+		}
+
+		const buttons = parent.querySelectorAll(`.${mode}Button`);
+		buttons.forEach((button) => {
+			button.addEventListener("click", () => {
+				if (button.parentElement?.tagName === "TD") {
+					const tr = button.parentElement.parentElement;
+					const id = tr?.dataset.id;
+					handleOpenModeModal(mode, modalElement, form, handler, id);
+				} else {
+					handleOpenModeModal(mode, modalElement, form, handler);
+				}
+			});
+		});
+	});
+}
+
+export async function attachCRUDHandler(parent: HTMLElement, handler: CRUDHandler) {
+	["edit", "delete", "append"].forEach((mode) => {
+		const modalElement = document.querySelector<HTMLElement>(`#${mode}Modal`);
+		if (modalElement == null) {
+			return;
+		}
+		const modal = getOrCreateModal(modalElement);
+		const form = modalElement.querySelector<HTMLFormElement>(`#${mode}Form`);
+		if (form == null) {
+			throw new Error(`${mode}にフォームがありません。`);
+		}
+
+		const closeHandler = () => {
+			modalElement.removeEventListener("hidden.bs.modal", closeHandler);
+			if (handler.onCloseModal != null) {
+				handler.onCloseModal(mode);
+			}
+		};
+		modalElement.addEventListener("hidden.bs.modal", closeHandler);
+
+		form.addEventListener("submit", async (e) => {
+			e.preventDefault();
+			try {
+				switch (mode) {
+					case "edit":
+						if ((await handler.onSubmitEdit(form)) === false) return;
+						break;
+					case "append":
+						if ((await handler.onSubmitAppend(form)) === false) return;
+						break;
+					case "delete":
+						if ((await handler.onSubmitDelete(form)) === false) return;
+						break;
+					default:
+						console.warn(`未定義モード: ${mode}でformがsubmitされました。`);
+						break;
+				}
+			} catch (error) {
+				alert(`${(error as CallApiError).message}`);
+			}
+			modal.hide();
+		});
+	});
+
+	attachCRUDButtonHandler(parent, handler);
 }

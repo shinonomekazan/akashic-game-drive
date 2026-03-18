@@ -2,7 +2,7 @@ import { watchAuthChanges, type User as FirebaseUser } from "./auth";
 import { App } from "./App";
 import * as utils from "./utils";
 import { manage } from "./resolvers";
-import { UserHandler } from "./handlers";
+import { ReportCRUDHandler, ReportDetailHandler, UserHandler } from "./handlers";
 import * as api from "./api";
 import * as helpers from "./helpers";
 
@@ -15,6 +15,7 @@ const MANAGE_MENU_ITEMS: ManageMenuItem[] = [
 	{ label: "ユーザー管理", href: "/manage/users/" },
 	{ label: "コンテンツ管理", href: "/manage/contents/" },
 	{ label: "管理ユーザー管理", href: "/manage/authority/" },
+	{ label: "レポート管理", href: "/manage/reports/" },
 ];
 
 export class Manage extends App {
@@ -76,6 +77,48 @@ export class Manage extends App {
 			const openDetailModal = helpers.attachDetailHandler(usersTableList, userHandler);
 			if (openDetailModal == null) throw new Error("DetailModalがありません");
 
+			helpers.attachIdDetailStateHandler(openDetailModal);
+		});
+	}
+
+	async reportsPage() {
+		this.withAuth("/manage/reports/index.html", async (_user, hasPermission) => {
+			if (!hasPermission) {
+				this.setContent(
+					`
+						<div class="manage-page d-flex flex-column justify-content-center align-items-center text-center px-3">
+							<div class="manage-top mb-4">
+								<h1 class="manage-title">
+									<span class="manage-title-main">ニコ生ゲーム置き場（仮）</span>
+									<span class="manage-title-sub">管理ツール – レポート管理</span>
+								</h1>
+								<p class="manage-error-message">このツールを利用する権限がありません</p>
+							</div>
+						</div>
+					`,
+					true,
+				);
+				return;
+			}
+
+			const reportsContent = utils.qsStrict<HTMLDivElement>("#reportsContent");
+			reportsContent.classList.remove("d-none");
+
+			const reportsTableList = utils.qsStrict<HTMLTableElement>("#reportsTableList");
+			const crudHandler = new ReportCRUDHandler(this.firebase.firestore, reportsTableList, this.apiClient);
+			await crudHandler.refreshReport();
+			const reportHandler = new ReportDetailHandler(this.firebase.firestore, this.apiClient, () =>
+				crudHandler.refreshReport(),
+			);
+			reportHandler.addEventListener("refresh", () => {
+				helpers.attachDetailHandler(reportsTableList, reportHandler);
+			});
+			crudHandler.addEventListener("refresh", () => {
+				helpers.attachCRUDButtonHandler(document.body, crudHandler);
+			});
+			helpers.attachCRUDHandler(document.body, crudHandler);
+			const openDetailModal = helpers.attachDetailHandler(reportsTableList, reportHandler);
+			if (openDetailModal == null) throw new Error("DetailModalがありません");
 			helpers.attachIdDetailStateHandler(openDetailModal);
 		});
 	}

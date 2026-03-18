@@ -14,8 +14,9 @@ import {
 } from "firebase/firestore";
 import type { UserProfile } from "../types";
 import * as manage from "./manage";
+import * as report from "./report";
 
-export { manage };
+export { manage, report };
 
 export async function getUser(firestore: Firestore, uid: string): Promise<UserProfile | null> {
 	const snapshot = await getDoc(doc(firestore, "users", uid));

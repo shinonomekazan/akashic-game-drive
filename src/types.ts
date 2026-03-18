@@ -94,11 +94,12 @@ export interface ManageUser {
 
 export interface ReportRecord {
 	id: string;
+	type: "content";
 	reporterId: string;
 	contentId: string;
-	category: "spam" | "copyright" | "other";
-	description: string;
-	status: "pending" | "resolved";
-	createdAt: Timestamp;
-	updatedAt: Timestamp;
+	category: "spam" | "violation" | "other";
+	description?: string;
+	status: "waiting" | "rejected" | "resolved";
+	createdAt?: Timestamp | null;
+	updatedAt?: Timestamp | null;
 }

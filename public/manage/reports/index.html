@@ -57,10 +57,10 @@
 												class="form-check-input"
 												type="checkbox"
 												name="filterCategory"
-												value="copyright"
-												id="categoryCopyright"
+												value="violation"
+												id="categoryViolation"
 											/>
-											<label class="form-check-label" for="categoryCopyright">copyright</label>
+											<label class="form-check-label" for="categoryViolation">violation</label>
 										</div>
 										<div class="form-check">
 											<input
@@ -89,10 +89,20 @@
 												class="form-check-input"
 												type="checkbox"
 												name="filterStatus"
-												value="pending"
-												id="statusPending"
+												value="waiting"
+												id="statusWaiting"
 											/>
-											<label class="form-check-label" for="statusPending">pending</label>
+											<label class="form-check-label" for="statusWaiting">waiting</label>
+										</div>
+										<div class="form-check">
+											<input
+												class="form-check-input"
+												type="checkbox"
+												name="filterStatus"
+												value="rejected"
+												id="statusRejected"
+											/>
+											<label class="form-check-label" for="statusRejected">rejected</label>
 										</div>
 										<div class="form-check">
 											<input
@@ -193,7 +203,8 @@
 							<div class="mb-3">
 								<label for="reportStatus" class="form-label">Status</label>
 								<select class="form-select" name="status" id="reportStatus">
-									<option value="pending">pending</option>
+									<option value="waiting">waiting</option>
+									<option value="rejected">rejected</option>
 									<option value="resolved">resolved</option>
 								</select>
 							</div>
@@ -278,7 +289,8 @@
 							<div class="mb-3">
 								<label for="reportStatus" class="form-label">Status</label>
 								<select class="form-select" name="status" id="reportStatus">
-									<option value="pending">pending</option>
+									<option value="waiting">waiting</option>
+									<option value="rejected">rejected</option>
 									<option value="resolved">resolved</option>
 								</select>
 							</div>

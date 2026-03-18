@@ -26,7 +26,8 @@ export async function getReport(firestore: Firestore, id: string): Promise<Repor
 		contentId: data.contentId ?? "",
 		category: data.category ?? "other",
 		description: data.description ?? "",
-		status: data.status ?? "pending",
+		status: data.status ?? "waiting",
+		type: data.type,
 		createdAt: data.createdAt,
 		updatedAt: data.updatedAt,
 	};

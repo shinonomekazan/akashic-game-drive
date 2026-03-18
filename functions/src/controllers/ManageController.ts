@@ -6,6 +6,7 @@ import * as validators from "express-validator";
 import { Context } from "../Context";
 import * as resolvers from "../resolvers";
 import * as stores from "../stores";
+import { ReportRecord } from "../types";
 
 interface AuthenticateManageUserParams {
 	authorization: string;
@@ -19,6 +20,17 @@ interface UpdateUserParams {
 }
 
 interface DeleteUserParams {
+	authorization: string;
+	id: string;
+}
+
+interface UpdateReportParams {
+	authorization: string;
+	id: string;
+	status: ReportRecord["status"];
+}
+
+interface DeleteReportParams {
 	authorization: string;
 	id: string;
 }
@@ -61,6 +73,33 @@ export class ManageController extends BaseController {
 						authorization: context.req.headers.authorization,
 						id: context.req.params.id,
 					}) as DeleteUserParams,
+			),
+		]);
+
+		this.registerRoute(router, "PUT", "/report/:id", this.updateReport, [
+			fw.params.InstantValidator(
+				[
+					params.headerBearerTokenValidator(),
+					validators.param("id").isString().notEmpty(),
+					validators.body("status").isString().notEmpty().isIn(["waiting", "rejected", "resolved"]),
+				],
+				(context) =>
+					({
+						authorization: context.req.headers.authorization,
+						id: context.req.params.id,
+						status: context.req.body.status,
+					}) as UpdateReportParams,
+			),
+		]);
+
+		this.registerRoute(router, "DELETE", "/report/:id", this.deleteReport, [
+			fw.params.InstantValidator(
+				[params.headerBearerTokenValidator(), validators.param("id").isString().notEmpty()],
+				(context) =>
+					({
+						authorization: context.req.headers.authorization,
+						id: context.req.params.id,
+					}) as DeleteReportParams,
 			),
 		]);
 
@@ -123,6 +162,34 @@ export class ManageController extends BaseController {
 
 		await stores.manage.deleteUser(this.app.firestore, p.id);
 		await this.app.auth.deleteUser(p.id);
+
+		return { result: "ok" };
+	}
+
+	async updateReport(context: Context) {
+		const p = context.params as UpdateReportParams;
+		const verifyResult = await this.verify(p.authorization);
+
+		const manageUser = await resolvers.manageUsers.resolve(this.app.firestore, verifyResult.uid);
+		if (!manageUser || manageUser.role !== "administrator") {
+			throw new fw.types.Forbidden("必要な権限がありません。");
+		}
+
+		await stores.manage.updateReport(this.app.firestore, p.id, p.status);
+
+		return { result: "ok" };
+	}
+
+	async deleteReport(context: Context) {
+		const p = context.params as DeleteReportParams;
+		const verifyResult = await this.verify(p.authorization);
+
+		const manageUser = await resolvers.manageUsers.resolve(this.app.firestore, verifyResult.uid);
+		if (!manageUser || manageUser.role !== "administrator") {
+			throw new fw.types.Forbidden("必要な権限がありません。");
+		}
+
+		await stores.manage.deleteReport(this.app.firestore, p.id);
 
 		return { result: "ok" };
 	}

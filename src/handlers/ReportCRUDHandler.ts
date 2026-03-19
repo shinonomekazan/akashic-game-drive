@@ -70,9 +70,9 @@ export class ReportCRUDHandler extends EventTarget implements CRUDHandler {
 			readMoreBtn.disabled = true;
 			let snapshot: QuerySnapshot<DocumentData> | undefined;
 			try {
-				snapshot = await this.listReport(LIMIT, lastDoc, filter);
+				snapshot = await this.listReport(LIMIT + 1, lastDoc, filter);
 
-				let docs = snapshot.docs;
+				let docs = snapshot.docs.slice(0, LIMIT);
 				const primaryField = getPrimaryFilterField(filter);
 				if (primaryField !== "categories" && filter.categories && filter.categories.length > 0) {
 					docs = docs.filter((doc) => {
@@ -95,10 +95,11 @@ export class ReportCRUDHandler extends EventTarget implements CRUDHandler {
 					tbody.appendChild(tr);
 				});
 
-				lastDoc = snapshot.docs[snapshot.docs.length - 1];
-				const hasMore = snapshot.docs.length === LIMIT;
+				lastDoc = snapshot.docs[LIMIT - 1];
+				const hasMore = snapshot.docs.length > LIMIT;
 				readMoreBtn.disabled = !hasMore;
 				readMoreBtn.style.display = hasMore ? "" : "none";
+				this.dispatchEvent(new events.RefreshEvent());
 			} catch (error) {
 				console.error("レポート一覧の取得に失敗しました:", error);
 				window.alert("レポート一覧の取得に失敗しました。時間をおいて再度お試しください。");
@@ -115,7 +116,6 @@ export class ReportCRUDHandler extends EventTarget implements CRUDHandler {
 		freshFilterBtn.addEventListener("click", () => loadReports(true));
 		readMoreBtn.addEventListener("click", () => loadReports());
 		await loadReports();
-		this.dispatchEvent(new events.RefreshEvent());
 	}
 
 	async onEdit(form: HTMLFormElement, id: string) {

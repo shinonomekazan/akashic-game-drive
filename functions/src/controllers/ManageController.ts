@@ -6,7 +6,7 @@ import * as validators from "express-validator";
 import { Context } from "../Context";
 import * as resolvers from "../resolvers";
 import * as stores from "../stores";
-import { ReportRecord } from "../types";
+import type { ReportRecord } from "../types";
 
 interface AuthenticateManageUserParams {
 	authorization: string;
@@ -137,14 +137,18 @@ export class ManageController extends BaseController {
 		return { role: desiredRoleClaim ?? null };
 	}
 
-	async updateUser(context: Context) {
-		const p = context.params as UpdateUserParams;
-		const verifyResult = await this.verify(p.authorization);
-
+	private async requireAdministrator(authorization: string) {
+		const verifyResult = await this.verify(authorization);
 		const manageUser = await resolvers.manageUsers.resolve(this.app.firestore, verifyResult.uid);
 		if (!manageUser || manageUser.role !== "administrator") {
 			throw new fw.types.Forbidden("必要な権限がありません。");
 		}
+		return manageUser;
+	}
+
+	async updateUser(context: Context) {
+		const p = context.params as UpdateUserParams;
+		await this.requireAdministrator(p.authorization);
 
 		await stores.manage.updateUser(this.app.firestore, p.id, p.name);
 
@@ -153,12 +157,7 @@ export class ManageController extends BaseController {
 
 	async deleteUser(context: Context) {
 		const p = context.params as DeleteUserParams;
-		const verifyResult = await this.verify(p.authorization);
-
-		const manageUser = await resolvers.manageUsers.resolve(this.app.firestore, verifyResult.uid);
-		if (!manageUser || manageUser.role !== "administrator") {
-			throw new fw.types.Forbidden("必要な権限がありません。");
-		}
+		await this.requireAdministrator(p.authorization);
 
 		await stores.manage.deleteUser(this.app.firestore, p.id);
 		await this.app.auth.deleteUser(p.id);
@@ -168,12 +167,7 @@ export class ManageController extends BaseController {
 
 	async updateReport(context: Context) {
 		const p = context.params as UpdateReportParams;
-		const verifyResult = await this.verify(p.authorization);
-
-		const manageUser = await resolvers.manageUsers.resolve(this.app.firestore, verifyResult.uid);
-		if (!manageUser || manageUser.role !== "administrator") {
-			throw new fw.types.Forbidden("必要な権限がありません。");
-		}
+		await this.requireAdministrator(p.authorization);
 
 		await stores.manage.updateReport(this.app.firestore, p.id, p.status);
 
@@ -182,12 +176,7 @@ export class ManageController extends BaseController {
 
 	async deleteReport(context: Context) {
 		const p = context.params as DeleteReportParams;
-		const verifyResult = await this.verify(p.authorization);
-
-		const manageUser = await resolvers.manageUsers.resolve(this.app.firestore, verifyResult.uid);
-		if (!manageUser || manageUser.role !== "administrator") {
-			throw new fw.types.Forbidden("必要な権限がありません。");
-		}
+		await this.requireAdministrator(p.authorization);
 
 		await stores.manage.deleteReport(this.app.firestore, p.id);
 

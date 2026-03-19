@@ -1,6 +1,6 @@
 import { Firestore, Timestamp } from "@google-cloud/firestore";
 import * as fw from "../fw";
-import { ReportRecord } from "../types";
+import type { ReportRecord } from "../types";
 
 export function updateUser(firestore: Firestore, uid: string, name: string) {
 	return firestore.runTransaction(async (transaction) => {

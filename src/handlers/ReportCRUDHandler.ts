@@ -40,10 +40,8 @@ export class ReportCRUDHandler extends EventTarget implements CRUDHandler {
 		const LIMIT = 20;
 		let readMoreBtn = qsStrict<HTMLButtonElement>("#readMoreReportBtn");
 		const filterBtn = qsStrict<HTMLButtonElement>("#filterReport");
-		const idInput = qsStrict<HTMLInputElement>("#searchReportId input");
-		const reporterIdInput = qsStrict<HTMLInputElement>("#searchReporterId input");
-		const contentIdInput = qsStrict<HTMLInputElement>("#searchReportContentId input");
-		const descriptionInput = qsStrict<HTMLInputElement>("#searchReportDescription input");
+		const fieldSelect = qsStrict<HTMLSelectElement>("#searchFieldSelect");
+		const fieldInput = qsStrict<HTMLInputElement>("#searchFieldInput");
 		let lastDoc: DocumentSnapshot | undefined = undefined;
 		const tbody = qsStrict<HTMLTableSectionElement>("tbody", this.reportsTableList);
 		const getSelectedCheckboxValues = (name: string): string[] => {
@@ -58,12 +56,13 @@ export class ReportCRUDHandler extends EventTarget implements CRUDHandler {
 				tbody.innerHTML = "";
 			}
 
+			const fieldValue = fieldInput.value.trim() || undefined;
 			const filter = {
-				id: idInput.value.trim() || undefined,
-				reporterId: reporterIdInput.value.trim() || undefined,
-				contentId: contentIdInput.value.trim() || undefined,
+				id: fieldSelect.value === "id" ? fieldValue : undefined,
+				reporterId: fieldSelect.value === "reporterId" ? fieldValue : undefined,
+				contentId: fieldSelect.value === "contentId" ? fieldValue : undefined,
 				categories: getSelectedCheckboxValues("filterCategory"),
-				description: descriptionInput.value.trim() || undefined,
+				description: fieldSelect.value === "description" ? fieldValue : undefined,
 				statuses: getSelectedCheckboxValues("filterStatus"),
 			};
 

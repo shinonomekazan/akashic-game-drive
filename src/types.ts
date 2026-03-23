@@ -94,7 +94,7 @@ export interface ManageUser {
 
 export interface ReportRecord {
 	id: string;
-	type: "content";
+	type?: "content";
 	reporterId: string;
 	contentId: string;
 	category: "spam" | "violation" | "other";

@@ -265,14 +265,6 @@ export async function attachCRUDHandler(parent: HTMLElement, handler: CRUDHandle
 			throw new Error(`${mode}にフォームがありません。`);
 		}
 
-		const closeHandler = () => {
-			modalElement.removeEventListener("hidden.bs.modal", closeHandler);
-			if (handler.onCloseModal != null) {
-				handler.onCloseModal(mode);
-			}
-		};
-		modalElement.addEventListener("hidden.bs.modal", closeHandler);
-
 		form.addEventListener("submit", async (e) => {
 			e.preventDefault();
 			try {

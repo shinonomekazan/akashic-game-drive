@@ -50,7 +50,6 @@ export async function listReport(
 	const constraints: QueryConstraint[] = [];
 	if (filter?.id) {
 		constraints.push(where("__name__", "==", filter.id));
-		constraints.push(orderBy("createdAt", "desc"));
 	} else if (filter?.reporterId) {
 		constraints.push(where("reporterId", "==", filter.reporterId));
 		constraints.push(orderBy("createdAt", "desc"));

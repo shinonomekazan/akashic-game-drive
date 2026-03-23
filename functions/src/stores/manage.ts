@@ -1,5 +1,6 @@
 import { Firestore, Timestamp } from "@google-cloud/firestore";
 import * as fw from "../fw";
+import type { ReportRecord } from "../types";
 
 export function updateUser(firestore: Firestore, uid: string, name: string) {
 	return firestore.runTransaction(async (transaction) => {
@@ -31,4 +32,27 @@ export async function deleteUser(firestore: Firestore, uid: string) {
 	);
 
 	await userDoc.delete();
+}
+
+export function updateReport(firestore: Firestore, id: string, status: ReportRecord["status"]) {
+	return firestore.runTransaction(async (transaction) => {
+		const reportDoc = firestore.collection("reports").doc(id);
+		const snapshot = await transaction.get(reportDoc);
+		if (!snapshot.exists) {
+			throw new fw.types.NotFound(`Report with id ${id} not found`);
+		}
+		transaction.update(reportDoc, {
+			status,
+			updatedAt: Timestamp.now(),
+		});
+	});
+}
+
+export async function deleteReport(firestore: Firestore, id: string) {
+	const reportDoc = firestore.collection("reports").doc(id);
+	const snapshot = await reportDoc.get();
+	if (!snapshot.exists) {
+		throw new fw.types.NotFound(`Report with id ${id} not found`);
+	}
+	await reportDoc.delete();
 }

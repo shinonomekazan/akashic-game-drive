@@ -56,13 +56,13 @@ export async function listReport(
 	} else if (filter?.contentId) {
 		constraints.push(where("contentId", "==", filter.contentId));
 		constraints.push(orderBy("createdAt", "desc"));
-	} else if (filter?.categories && filter.categories.length > 0) {
-		constraints.push(where("category", "in", filter.categories));
-		constraints.push(orderBy("createdAt", "desc"));
 	} else if (filter?.description) {
 		constraints.push(orderBy("description"));
 		constraints.push(where("description", ">=", filter.description));
 		constraints.push(where("description", "<=", filter.description + "\uf8ff"));
+		constraints.push(orderBy("createdAt", "desc"));
+	} else if (filter?.categories && filter.categories.length > 0) {
+		constraints.push(where("category", "in", filter.categories));
 		constraints.push(orderBy("createdAt", "desc"));
 	} else if (filter?.statuses && filter.statuses.length > 0) {
 		constraints.push(where("status", "in", filter.statuses));

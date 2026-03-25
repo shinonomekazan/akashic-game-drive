@@ -50,25 +50,28 @@ export async function listReport(
 	const constraints: QueryConstraint[] = [];
 	if (filter?.id) {
 		constraints.push(where("__name__", "==", filter.id));
-	} else if (filter?.reporterId) {
-		constraints.push(where("reporterId", "==", filter.reporterId));
-		constraints.push(orderBy("createdAt", "desc"));
-	} else if (filter?.contentId) {
-		constraints.push(where("contentId", "==", filter.contentId));
-		constraints.push(orderBy("createdAt", "desc"));
-	} else if (filter?.description) {
-		constraints.push(orderBy("description"));
-		constraints.push(where("description", ">=", filter.description));
-		constraints.push(where("description", "<=", filter.description + "\uf8ff"));
-		constraints.push(orderBy("createdAt", "desc"));
-	} else if (filter?.categories && filter.categories.length > 0) {
-		constraints.push(where("category", "in", filter.categories));
-		constraints.push(orderBy("createdAt", "desc"));
-	} else if (filter?.statuses && filter.statuses.length > 0) {
-		constraints.push(where("status", "in", filter.statuses));
-		constraints.push(orderBy("createdAt", "desc"));
 	} else {
-		constraints.push(orderBy("createdAt", "desc"));
+		if (filter?.reporterId) {
+			constraints.push(where("reporterId", "==", filter.reporterId));
+		}
+		if (filter?.contentId) {
+			constraints.push(where("contentId", "==", filter.contentId));
+		}
+		if (filter?.description) {
+			constraints.push(orderBy("description", "asc"));
+			constraints.push(where("description", ">=", filter.description));
+			constraints.push(where("description", "<=", filter.description + "\uf8ff"));
+			constraints.push(orderBy("createdAt", "desc"));
+		}
+		if (filter?.categories?.length) {
+			constraints.push(where("category", "in", filter.categories));
+		}
+		if (filter?.statuses?.length) {
+			constraints.push(where("status", "in", filter.statuses));
+		}
+		if (filter?.description == null) {
+			constraints.push(orderBy("createdAt", "desc"));
+		}
 	}
 
 	if (lastDoc) constraints.push(startAfter(lastDoc));

@@ -66,6 +66,10 @@
 			{
 				"source": "/manage/users/*",
 				"destination": "/manage/users/index.html"
+			},
+			{
+				"source": "/manage/reports/*",
+				"destination": "/manage/reports/index.html"
 			}
 		],
 		"headers": [

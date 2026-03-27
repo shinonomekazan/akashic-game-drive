@@ -1,5 +1,5 @@
-import { createTextTd } from "../helpers";
-import { ContentRecord, FeedbackRecord } from "../types";
+import { createActionColumn, createBasicActionColumn, createTextTd } from "../helpers";
+import { ContentRecord, FeedbackRecord, ReportRecord } from "../types";
 
 export function convertContentToHtmlRow(content: ContentRecord) {
 	const tr = document.createElement("tr");
@@ -32,5 +32,17 @@ export function convertFeedbackToHtmlRow(feedback: FeedbackRecord) {
 	tr.appendChild(createTextTd(feedback.detail));
 	tr.appendChild(createTextTd(feedback.contentId ?? "-"));
 	tr.dataset.id = `${feedback.id}`;
+	return tr;
+}
+
+export function convertReportToHtmlRow(report: ReportRecord) {
+	const tr = document.createElement("tr");
+	tr.appendChild(createTextTd(report.id));
+	tr.appendChild(createTextTd(report.reporterId ?? "-"));
+	tr.appendChild(createTextTd(report.contentId ?? "-"));
+	tr.appendChild(createTextTd(report.category ?? "-"));
+	tr.appendChild(createTextTd(report.status ?? "-"));
+	tr.appendChild(createBasicActionColumn());
+	tr.dataset.id = report.id;
 	return tr;
 }

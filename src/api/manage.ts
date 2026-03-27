@@ -15,3 +15,11 @@ export function updateUser(client: Client, id: string, object: object) {
 export function deleteUser(client: Client, id: string) {
 	return client.callWithAuthorization<{ result: string }>("DELETE", `/manage/user/${id}`);
 }
+
+export function updateReport(client: Client, id: string, object: object) {
+	return client.callWithAuthorization<{ result: string }>("PUT", `/manage/report/${id}`, JSON.stringify(object));
+}
+
+export function deleteReport(client: Client, id: string) {
+	return client.callWithAuthorization<{ result: string }>("DELETE", `/manage/report/${id}`);
+}

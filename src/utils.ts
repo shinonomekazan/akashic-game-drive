@@ -175,3 +175,20 @@ export function withId<T>(doc: QueryDocumentSnapshot<DocumentData>): T {
 export function wait(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+export function getPrimaryFilterField(filter: {
+	id?: string;
+	reporterId?: string;
+	contentId?: string;
+	categories?: string[];
+	description?: string;
+	statuses?: string[];
+}): string | null {
+	if (filter.id) return "id";
+	if (filter.reporterId) return "reporterId";
+	if (filter.contentId) return "contentId";
+	if (filter.categories && filter.categories.length > 0) return "categories";
+	if (filter.description) return "description";
+	if (filter.statuses && filter.statuses.length > 0) return "statuses";
+	return null;
+}

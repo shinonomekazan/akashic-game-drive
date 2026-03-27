@@ -189,6 +189,13 @@ export function createTextTag(tagName: string, text: string) {
 	return tag;
 }
 
+export function createTextTdWithCss(text: string) {
+	const td = createTextTag("td", text);
+	td.style.wordBreak = "break-all";
+	td.style.width = "20%";
+	return td;
+}
+
 export function createTextTd(text: string) {
 	return createTextTag("td", text);
 }

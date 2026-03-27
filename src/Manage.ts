@@ -2,7 +2,7 @@ import { watchAuthChanges, type User as FirebaseUser } from "./auth";
 import { App } from "./App";
 import * as utils from "./utils";
 import { manage } from "./resolvers";
-import { ReportCRUDHandler, ReportDetailHandler, UserHandler } from "./handlers";
+import { ContentCRUDHandler, ReportCRUDHandler, ReportDetailHandler, UserHandler } from "./handlers";
 import * as api from "./api";
 import * as helpers from "./helpers";
 
@@ -14,7 +14,7 @@ type ManageMenuItem = {
 const MANAGE_MENU_ITEMS: ManageMenuItem[] = [
 	{ label: "ユーザー管理", href: "/manage/users/" },
 	{ label: "コンテンツ管理", href: "/manage/contents/" },
-	{ label: "管理ユーザー管理", href: "/manage/authority/" },
+	{ label: "管理ユーザー管理", href: "" },
 	{ label: "レポート管理", href: "/manage/reports/" },
 ];
 
@@ -118,6 +118,39 @@ export class Manage extends App {
 			const openDetailModal = helpers.attachDetailHandler(reportsTableList, reportHandler);
 			if (openDetailModal == null) throw new Error("DetailModalがありません");
 			helpers.attachIdDetailStateHandler(openDetailModal);
+		});
+	}
+
+	async contentsPage() {
+		this.withAuth("/manage/contents/index.html", async (_user, hasPermission) => {
+			if (!hasPermission) {
+				this.setContent(
+					`
+						<div class="manage-page d-flex flex-column justify-content-center align-items-center text-center px-3">
+							<div class="manage-top mb-4">
+								<h1 class="manage-title">
+									<span class="manage-title-main">ニコ生ゲーム置き場（仮）</span>
+									<span class="manage-title-sub">管理ツール – コンテンツ管理</span>
+								</h1>
+								<p class="manage-error-message">このツールを利用する権限がありません</p>
+							</div>
+						</div>
+					`,
+					true,
+				);
+				return;
+			}
+
+			const content = utils.qsStrict<HTMLDivElement>("#content");
+			content.classList.remove("d-none");
+
+			const contentsTableList = utils.qsStrict<HTMLTableElement>("#contentsTableList");
+			const contentHandler = new ContentCRUDHandler(this.firebase.firestore, contentsTableList, this.apiClient);
+			await contentHandler.refreshContent();
+			contentHandler.addEventListener("refresh", () => {
+				helpers.attachCRUDButtonHandler(document.body, contentHandler);
+			});
+			helpers.attachCRUDHandler(document.body, contentHandler);
 		});
 	}
 

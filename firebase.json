@@ -70,6 +70,10 @@
 			{
 				"source": "/manage/reports/*",
 				"destination": "/manage/reports/index.html"
+			},
+			{
+				"source": "/manage/contents/*",
+				"destination": "/manage/contents/index.html"
 			}
 		],
 		"headers": [

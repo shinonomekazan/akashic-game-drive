@@ -14,7 +14,7 @@ type ManageMenuItem = {
 const MANAGE_MENU_ITEMS: ManageMenuItem[] = [
 	{ label: "ユーザー管理", href: "/manage/users/" },
 	{ label: "コンテンツ管理", href: "/manage/contents/" },
-	{ label: "管理ユーザー管理", href: "/manage/authority/" },
+	{ label: "管理ユーザー管理", href: "" },
 ];
 
 export class Manage extends App {
@@ -77,6 +77,30 @@ export class Manage extends App {
 			if (openDetailModal == null) throw new Error("DetailModalがありません");
 
 			helpers.attachIdDetailStateHandler(openDetailModal);
+		});
+	}
+
+	async contentsPage() {
+		this.withAuth("/manage/users/index.html", async (_user, hasPermission) => {
+			if (!hasPermission) {
+				this.setContent(
+					`
+						<div class="manage-page d-flex flex-column justify-content-center align-items-center text-center px-3">
+							<div class="manage-top mb-4">
+								<h1 class="manage-title">
+									<span class="manage-title-main">ニコ生ゲーム置き場（仮）</span>
+									<span class="manage-title-sub">管理ツール – ユーザー管理</span>
+								</h1>
+								<p class="manage-error-message">このツールを利用する権限がありません</p>
+							</div>
+						</div>
+					`,
+					true,
+				);
+				return;
+			}
+			const content = utils.qsStrict<HTMLDivElement>("#content");
+			content.classList.remove("d-none");
 		});
 	}
 

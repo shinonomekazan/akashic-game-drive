@@ -14,6 +14,7 @@ import {
 import { convertContentToHtmlRow, convertFeedbackToHtmlRow, convertMyFeedbackToHtmlRow } from "../converters";
 import { deleteUser, updateUser } from "../api/manage";
 import { Client } from "../api/client";
+import * as events from "../events";
 
 export class UserHandler extends EventTarget implements DetailHandler {
 	firestore: Firestore;
@@ -39,7 +40,7 @@ export class UserHandler extends EventTarget implements DetailHandler {
 		const usernameInput = qsStrict<HTMLInputElement>("#searchUserName input");
 		let lastDoc: DocumentSnapshot | undefined = undefined;
 		const tbody = qsStrict<HTMLTableSectionElement>("tbody", this.usersTableList);
-
+		tbody.innerHTML = "";
 		const loadUsers = async (reset = false) => {
 			if (reset) {
 				lastDoc = undefined;
@@ -81,6 +82,7 @@ export class UserHandler extends EventTarget implements DetailHandler {
 					readMoreBtn.disabled = false;
 				}
 			}
+			this.dispatchEvent(new events.RefreshEvent());
 		};
 
 		const freshFilterBtn = resetBtn(filterBtn);
@@ -88,7 +90,7 @@ export class UserHandler extends EventTarget implements DetailHandler {
 
 		freshFilterBtn.addEventListener("click", () => loadUsers(true));
 		readMoreBtn.addEventListener("click", () => loadUsers());
-		await loadUsers();
+		await loadUsers(true);
 	}
 
 	async onDetail(form: HTMLFormElement, id: string): Promise<void> {

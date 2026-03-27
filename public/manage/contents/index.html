@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>ニコ生ゲーム置き場（仮）</title>
+		<link rel="stylesheet" href="/css/styles.css" />
+		<script src="/js/manage.bundle.js"></script>
+	</head>
+	<body>
+		<div id="app-root">
+			<div class="container-fluid d-none" id="content">
+				<div class="row">
+					<main>
+						<section class="container">
+							<div class="d-flex justify-content-center mt-2 flex-column align-items-center">
+								<h2>ニコ生ゲーム置き場（仮）</h2>
+								<h2>管理ツール – コンテンツ管理</h2>
+							</div>
+							<div class="d-flex flex-column align-items-end mb-2">
+								<div class="d-flex align-items-center justify-content-between mb-3" style="width: 35%">
+									<div class="d-flex gap-2 w-100">
+										<select id="searchFieldSelect" class="form-select w-auto">
+											<option value="id">ID</option>
+											<option value="userId">ユーザー ID</option>
+											<option value="userName">ユーザー名</option>
+											<option value="title">タイトル</option>
+											<option value="description">説明</option>
+										</select>
+										<input
+											id="searchFieldInput"
+											type="text"
+											class="form-control"
+											placeholder="値を入力"
+										/>
+									</div>
+								</div>
+								<div
+									id="searchStatus"
+									class="d-flex align-items-center justify-content-between w-25 mb-3"
+								>
+									<label for="status" class="me-3 w-50">状態</label>
+									<select class="form-select">
+										<option value="ok">オーケー</option>
+										<option value="failed">失敗</option>
+									</select>
+								</div>
+								<div class="d-flex align-items-start justify-content-between w-25 mb-3">
+									<label class="me-3 w-50">特殊条件:</label>
+									<div class="d-flex flex-column">
+										<div class="form-check">
+											<input
+												class="form-check-input"
+												type="checkbox"
+												name="filterConditions"
+												value="warning"
+												id="warning"
+											/>
+											<label class="form-check-label" for="warning">警告あり</label>
+										</div>
+										<div class="form-check">
+											<input
+												class="form-check-input"
+												type="checkbox"
+												name="filterConditions"
+												value="noThumbnail"
+												id="noThumbnail"
+											/>
+											<label class="form-check-label" for="noThumbnail">サムネなし</label>
+										</div>
+									</div>
+								</div>
+								<button id="filterUser" class="btn btn-primary">フィルタ</button>
+							</div>
+							<table id="contentsTableList" class="table table-striped table-hover">
+								<thead>
+									<tr>
+										<th>コンテンツID</th>
+										<th>タイトル</th>
+										<th>状態</th>
+										<th>Action</th>
+									</tr>
+								</thead>
+								<tbody></tbody>
+							</table>
+							<nav class="d-flex justify-content-center">
+								<button id="readMoreBtn" class="btn btn-secondary">もっと見る</button>
+							</nav>
+						</section>
+					</main>
+				</div>
+			</div>
+		</div>
+		<div id="toast" aria-live="polite"></div>
+		<script>
+			const tool = new manage.Manage();
+			document.addEventListener("DOMContentLoaded", () => {
+				tool.contentsPage();
+			});
+		</script>
+	</body>
+</html>

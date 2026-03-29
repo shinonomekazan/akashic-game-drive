@@ -1,7 +1,20 @@
 import { Client } from "./client";
+import type { CreateContentUploadUrlResult } from "./contents";
 
 interface AuthenticateResult {
 	role: string | null;
+}
+
+interface ManageUpdateContentInput {
+	title: string;
+	description?: string;
+	thumbnailUrl?: string;
+}
+
+interface ManageCreateContentUploadUrlInput {
+	kind: "thumbnail";
+	mimeType: string;
+	contentId: string;
 }
 
 export function authenticate(client: Client, id: string = "me") {
@@ -22,4 +35,20 @@ export function updateReport(client: Client, id: string, object: object) {
 
 export function deleteReport(client: Client, id: string) {
 	return client.callWithAuthorization<{ result: string }>("DELETE", `/manage/report/${id}`);
+}
+
+export function updateContent(client: Client, id: string, object: ManageUpdateContentInput) {
+	return client.callWithAuthorization<{ result: string }>("PUT", `/manage/content/${id}`, JSON.stringify(object));
+}
+
+export function createContentUploadUrl(client: Client, input: ManageCreateContentUploadUrlInput) {
+	return client.callWithAuthorization<CreateContentUploadUrlResult>(
+		"POST",
+		"/manage/content/upload-url",
+		JSON.stringify(input),
+	);
+}
+
+export function deleteContent(client: Client, id: string) {
+	return client.callWithAuthorization<{ result: string }>("DELETE", `/manage/content/${id}`);
 }

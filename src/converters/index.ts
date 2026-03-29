@@ -55,3 +55,13 @@ export function convertManageContentToHtmlRow(content: ContentRecord) {
 	tr.dataset.id = content.id;
 	return tr;
 }
+
+export function convertContentFeedbackToHtmlRow(feedback: FeedbackRecord) {
+	const tr = document.createElement("tr");
+	tr.appendChild(createTextTd(feedback.id));
+	tr.appendChild(createTextTd(feedback.senderId));
+	tr.appendChild(createTextTd(feedback.title));
+	tr.appendChild(createTextTd(feedback.detail));
+	tr.dataset.id = `${feedback.id}`;
+	return tr;
+}

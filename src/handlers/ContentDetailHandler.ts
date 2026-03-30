@@ -30,12 +30,12 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 	}
 
 	async onDetail(form: HTMLFormElement, id: string): Promise<void | false> {
-		pushQueryState({ id });
 		const contentDoc = await getContent(this.firestore, id);
 		if (contentDoc == null) {
 			window.alert("コンテンツが見つかりませんでした。");
 			return false;
 		}
+		pushQueryState({ id });
 		let currentContent = contentDoc;
 
 		const thumbnailContent = qsStrict<HTMLElement>("#thumbnailContent");
@@ -94,11 +94,33 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 			}
 			return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(filePath)}?alt=media`;
 		};
+		const resolveImageMimeType = (file: File): string => {
+			if (file.type) {
+				return file.type;
+			}
+			const match = /\.([a-zA-Z0-9]+)$/.exec(file.name);
+			if (!match) {
+				throw new Error("選択されたファイルの形式を判別できません。別の画像ファイルを選択してください。");
+			}
+			const ext = match[1].toLowerCase();
+			const extToMime: Record<string, string> = {
+				png: "image/png",
+				jpg: "image/jpeg",
+				jpeg: "image/jpeg",
+				webp: "image/webp",
+				gif: "image/gif",
+			};
+			const mimeType = extToMime[ext];
+			if (!mimeType) {
+				throw new Error("対応していない画像形式です。PNG / JPEG / WebP 形式の画像を選択してください。");
+			}
+			return mimeType;
+		};
 		const uploadThumbnail = async (file: File, contentId: string) => {
 			if (!contentId) {
 				throw new Error("コンテンツIDが不正です");
 			}
-			const mimeType = file.type || "image/png";
+			const mimeType = resolveImageMimeType(file);
 			if (isDebugMode()) {
 				const currentUser = getAuth().currentUser;
 				if (!currentUser) {

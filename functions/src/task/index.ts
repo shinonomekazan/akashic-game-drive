@@ -103,7 +103,7 @@ export const onMyFeedbackCreated = onDocumentCreated(
 );
 
 export const onContentDeleted = onDocumentDeleted(
-	{ region: "asia-northeast1", document: "contents/{contentId}" },
+	{ region: "asia-northeast1", document: "contents/{contentId}", timeoutSeconds: 300 },
 	async (event) => {
 		const snapshot = event.data;
 		if (!snapshot) return;

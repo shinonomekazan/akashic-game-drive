@@ -160,10 +160,8 @@ export class Manage extends App {
 				() => contentHandler.refreshContent(),
 			);
 			contentHandler.addEventListener("refresh", () => {
-				helpers.attachCRUDButtonHandler(document.body, contentHandler);
 				helpers.attachDetailHandler(contentsTableList, contentDetailHandler);
 			});
-			helpers.attachCRUDHandler(document.body, contentHandler);
 			const openDetailModal = helpers.attachDetailHandler(contentsTableList, contentDetailHandler);
 			if (openDetailModal == null) throw new Error("DetailModalがありません");
 			helpers.attachIdDetailStateHandler(openDetailModal);

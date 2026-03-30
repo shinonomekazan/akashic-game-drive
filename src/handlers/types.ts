@@ -1,5 +1,5 @@
 export interface DetailHandler {
-	onDetail(form: HTMLFormElement, id: string): Promise<void>;
+	onDetail(form: HTMLFormElement, id: string): Promise<void | false>;
 	onCloseModal?(mode: string): void;
 }
 

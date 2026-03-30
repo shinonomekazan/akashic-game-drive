@@ -55,6 +55,8 @@ export function attachDetailHandler(parent: HTMLElement, handler: DetailHandler)
 	parent.querySelectorAll("tr").forEach((tr) => {
 		tr.querySelectorAll("td").forEach((td) => {
 			if (td.querySelector("input, textarea, select, button") != null) return;
+			if ((td as HTMLElement).dataset.detailHandlerAttached === "1") return;
+			(td as HTMLElement).dataset.detailHandlerAttached = "1";
 			td.addEventListener("click", () => {
 				const id = tr.dataset.id!;
 				openDetailModal(id);
@@ -73,6 +75,7 @@ export async function handleOpenModeModal(
 	id?: string,
 ) {
 	const modal = getOrCreateModal(modalElement);
+	let shouldOpenModal = true;
 	switch (mode) {
 		case "edit":
 			if (id == null) throw new Error("IDが無い状態でEditが呼び出されました");
@@ -84,11 +87,14 @@ export async function handleOpenModeModal(
 			break;
 		case "detail":
 			if (id == null) throw new Error("IDが無い状態でDetailが呼び出されました");
-			await (handler as DetailHandler).onDetail(form, id);
+			shouldOpenModal = (await (handler as DetailHandler).onDetail(form, id)) !== false;
 			break;
 		default:
 			console.warn(`未定義モード: ${mode}でhandleOpenModeModalが呼び出されています。`);
 			break;
+	}
+	if (!shouldOpenModal) {
+		return;
 	}
 	const closeHandler = () => {
 		modalElement.removeEventListener("hidden.bs.modal", closeHandler);

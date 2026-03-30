@@ -8,28 +8,12 @@ import { getContent } from "../resolvers/contents";
 import { ContentRecord, FeedbackRecord } from "../types";
 import { isDebugMode, qsStrict } from "../utils";
 import { DetailHandler } from "./types";
-import { listFeedbacks } from "../resolvers";
+import { listFeedbacksByContentId } from "../resolvers";
 import { convertContentFeedbackToHtmlRow } from "../converters";
 
 const MAX_THUMB_SIZE = 20 * 1024 * 1024;
 const CACHE_CONTROL = "public,max-age=604800,immutable";
 const IMAGE_MIME_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-
-function toDetailFormContent(content: ContentRecord): Omit<ContentRecord, "warnings"> & { warnings?: string } {
-	return {
-		...content,
-		warnings: content.warnings?.join(", "),
-	};
-}
-
-function isImageFile(file: File) {
-	const name = file.name.toLowerCase();
-	const hasImageExt = [".png", ".jpg", ".jpeg", ".webp"].some((ext) => name.endsWith(ext));
-	if (!file.type) {
-		return hasImageExt;
-	}
-	return IMAGE_MIME_TYPES.includes(file.type) || hasImageExt;
-}
 
 export class ContentDetailHandler extends EventTarget implements DetailHandler {
 	firestore: Firestore;
@@ -45,12 +29,12 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 		this.refresh = refresh;
 	}
 
-	async onDetail(form: HTMLFormElement, id: string): Promise<void> {
+	async onDetail(form: HTMLFormElement, id: string): Promise<void | false> {
 		pushQueryState({ id });
 		const contentDoc = await getContent(this.firestore, id);
 		if (contentDoc == null) {
 			window.alert("コンテンツが見つかりませんでした。");
-			return;
+			return false;
 		}
 		let currentContent = contentDoc;
 
@@ -63,7 +47,7 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 		let isEditMode = false;
 
 		const setFormValues = (content: ContentRecord) => {
-			setFormValuesByPropsWithTimeConvert(form, toDetailFormContent(content), [
+			setFormValuesByPropsWithTimeConvert(form, this.toDetailFormContent(content), [
 				"id",
 				"title",
 				"description",
@@ -120,11 +104,15 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 				if (!currentUser) {
 					throw new Error("ログインが必要です");
 				}
+				const ownerId = currentContent.ownerId;
+				if (!ownerId) {
+					throw new Error("コンテンツの所有者情報が不正です");
+				}
 				if (/[\\/]/.test(file.name)) {
 					throw new Error("ファイル名に使用できない文字が含まれています");
 				}
 				const objectName = `${Date.now()}-${file.name}`;
-				const objectPath = `uploads/${currentUser.uid}/contents/thumbnail/${contentId}/${objectName}`;
+				const objectPath = `uploads/${ownerId}/contents/thumbnail/${contentId}/${objectName}`;
 				const storageRef = ref(this.storage, objectPath);
 				await uploadBytes(storageRef, file, {
 					contentType: mimeType,
@@ -132,7 +120,6 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 				});
 				return getDownloadURL(storageRef);
 			}
-
 			const uploadInfo = await createContentUploadUrl(this.api, {
 				kind: "thumbnail",
 				mimeType,
@@ -160,7 +147,7 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 		const feedbacksTableList = qsStrict<HTMLTableElement>("#feedbacksTableList");
 		const feedbacksTbody = qsStrict<HTMLTableSectionElement>("tbody", feedbacksTableList);
 		feedbacksTbody.innerHTML = "";
-		const feedbacksDoc = await listFeedbacks(this.firestore, currentContent.ownerId);
+		const feedbacksDoc = await listFeedbacksByContentId(this.firestore, currentContent.ownerId, id, 50);
 		feedbacksDoc.docs.forEach((doc) => {
 			const feedbackData = { id: doc.id, ...doc.data() } as FeedbackRecord;
 			const tr = convertContentFeedbackToHtmlRow(feedbackData);
@@ -223,7 +210,7 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 			}
 			const thumbFile = thumbInput.files?.[0];
 			if (thumbFile) {
-				if (!isImageFile(thumbFile)) {
+				if (!this.isImageFile(thumbFile)) {
 					window.alert("サムネイル画像はPNG/JPEG/WEBPのみ対応しています。");
 					return;
 				}
@@ -286,6 +273,22 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 			setFormValues(currentContent);
 			setViewMode();
 		});
+	}
+
+	toDetailFormContent(content: ContentRecord): Omit<ContentRecord, "warnings"> & { warnings?: string } {
+		return {
+			...content,
+			warnings: content.warnings?.join(", "),
+		};
+	}
+
+	isImageFile(file: File) {
+		const name = file.name.toLowerCase();
+		const hasImageExt = [".png", ".jpg", ".jpeg", ".webp"].some((ext) => name.endsWith(ext));
+		if (!file.type) {
+			return hasImageExt;
+		}
+		return IMAGE_MIME_TYPES.includes(file.type) || hasImageExt;
 	}
 
 	onCloseModal(): void {

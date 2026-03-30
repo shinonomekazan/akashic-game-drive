@@ -1,6 +1,7 @@
 import { Firestore, Timestamp } from "@google-cloud/firestore";
 import * as fw from "../fw";
-import type { ReportRecord } from "../types";
+import type { ContentRecord, ReportRecord } from "../types";
+import { eraseUndefined } from "../utils";
 
 export function updateUser(firestore: Firestore, uid: string, name: string) {
 	return firestore.runTransaction(async (transaction) => {
@@ -46,6 +47,37 @@ export function updateReport(firestore: Firestore, id: string, status: ReportRec
 			updatedAt: Timestamp.now(),
 		});
 	});
+}
+
+export function updateContent(
+	firestore: Firestore,
+	content: Pick<ContentRecord, "id" | "title" | "description" | "thumbnailUrl">,
+) {
+	return firestore.runTransaction(async (transaction) => {
+		const contentDoc = firestore.collection("contents").doc(content.id);
+		const snapshot = await transaction.get(contentDoc);
+		if (!snapshot.exists) {
+			throw new fw.types.NotFound(`Content with id ${content.id} not found`);
+		}
+		transaction.update(
+			contentDoc,
+			eraseUndefined({
+				title: content.title,
+				description: content.description,
+				thumbnailUrl: content.thumbnailUrl,
+				updatedAt: Timestamp.now(),
+			}),
+		);
+	});
+}
+
+export async function deleteContent(firestore: Firestore, id: string) {
+	const contentDoc = firestore.collection("contents").doc(id);
+	const snapshot = await contentDoc.get();
+	if (!snapshot.exists) {
+		throw new fw.types.NotFound(`Content with id ${id} not found`);
+	}
+	await contentDoc.delete();
 }
 
 export async function deleteReport(firestore: Firestore, id: string) {

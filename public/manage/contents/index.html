@@ -92,6 +92,101 @@
 			</div>
 		</div>
 		<div id="toast" aria-live="polite"></div>
+		<div
+			class="modal fade"
+			id="detailModal"
+			tabindex="-1"
+			aria-labelledby="contentDetailModalLabel"
+			aria-hidden="true"
+		>
+			<div class="modal-dialog modal-fullscreen">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="contentDetailModalLabel">コンテンツの詳細</h5>
+					</div>
+					<div class="modal-body">
+						<div class="d-flex justify-content-end me-3" id="contentActionBtn">
+							<button type="button" class="btn btn-primary me-3" id="editBtn">更新</button>
+							<button type="button" class="btn btn-danger" id="deleteBtn">削除</button>
+						</div>
+						<div
+							id="thumbnailContent"
+							class="d-flex flex-column align-items-center justify-content-center m-3 d-none"
+						>
+							<img src="" class="img-fluid agd-thumb mb-2" alt="thumbnail" />
+							<input
+								id="content-thumb"
+								class="form-control w-25 d-none"
+								type="file"
+								accept="image/png,image/jpeg,image/webp"
+							/>
+						</div>
+						<form id="detailForm" class="w-25 mx-auto mb-3">
+							<div class="mb-3">
+								<label for="contentIdDetail" class="form-label">ID</label>
+								<input type="text" class="form-control" name="id" id="contentIdDetail" readonly />
+							</div>
+							<div class="mb-3">
+								<label for="title" class="form-label">タイトル</label>
+								<input type="text" class="form-control" name="title" id="title" readonly />
+							</div>
+							<div class="mb-3">
+								<label for="description" class="form-label">説明</label>
+								<textarea
+									class="form-control"
+									name="description"
+									id="description"
+									rows="3"
+									readonly
+								></textarea>
+							</div>
+							<div class="mb-3">
+								<label for="state" class="form-label">状態</label>
+								<select class="form-select" name="state" id="state" disabled>
+									<option value="ok">オーケー</option>
+									<option value="failed">失敗</option>
+								</select>
+							</div>
+							<div class="mb-3">
+								<label for="warnings" class="form-label">警告</label>
+								<textarea
+									class="form-control"
+									name="warnings"
+									id="warnings"
+									rows="3"
+									readonly
+								></textarea>
+							</div>
+							<div class="mb-3">
+								<label for="createdAt" class="form-label">作成日時</label>
+								<input type="text" class="form-control" name="createdAt" id="createdAt" readonly />
+							</div>
+							<div class="mb-3">
+								<label for="updatedAt" class="form-label">更新日時</label>
+								<input type="text" class="form-control" name="updatedAt" id="updatedAt" readonly />
+							</div>
+						</form>
+						<div class="my-4">
+							<h3>受信フィードバック</h3>
+							<table id="feedbacksTableList" class="table table-striped">
+								<thead>
+									<tr class="table-dark">
+										<th>ID</th>
+										<th>送信者ID</th>
+										<th>表題</th>
+										<th>ディテール</th>
+									</tr>
+								</thead>
+								<tbody></tbody>
+							</table>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+					</div>
+				</div>
+			</div>
+		</div>
 		<script>
 			const tool = new manage.Manage();
 			document.addEventListener("DOMContentLoaded", () => {

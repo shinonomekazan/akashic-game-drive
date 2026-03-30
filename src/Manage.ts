@@ -2,7 +2,13 @@ import { watchAuthChanges, type User as FirebaseUser } from "./auth";
 import { App } from "./App";
 import * as utils from "./utils";
 import { manage } from "./resolvers";
-import { ContentCRUDHandler, ReportCRUDHandler, ReportDetailHandler, UserHandler } from "./handlers";
+import {
+	ContentCRUDHandler,
+	ContentDetailHandler,
+	ReportCRUDHandler,
+	ReportDetailHandler,
+	UserHandler,
+} from "./handlers";
 import * as api from "./api";
 import * as helpers from "./helpers";
 
@@ -147,10 +153,18 @@ export class Manage extends App {
 			const contentsTableList = utils.qsStrict<HTMLTableElement>("#contentsTableList");
 			const contentHandler = new ContentCRUDHandler(this.firebase.firestore, contentsTableList, this.apiClient);
 			await contentHandler.refreshContent();
+			const contentDetailHandler = new ContentDetailHandler(
+				this.firebase.firestore,
+				this.apiClient,
+				this.firebase.storage,
+				() => contentHandler.refreshContent(),
+			);
 			contentHandler.addEventListener("refresh", () => {
-				helpers.attachCRUDButtonHandler(document.body, contentHandler);
+				helpers.attachDetailHandler(contentsTableList, contentDetailHandler);
 			});
-			helpers.attachCRUDHandler(document.body, contentHandler);
+			const openDetailModal = helpers.attachDetailHandler(contentsTableList, contentDetailHandler);
+			if (openDetailModal == null) throw new Error("DetailModalがありません");
+			helpers.attachIdDetailStateHandler(openDetailModal);
 		});
 	}
 

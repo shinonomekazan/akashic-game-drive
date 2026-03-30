@@ -31,6 +31,19 @@ export class ContentCRUDHandler extends EventTarget implements CRUDHandler {
 		const fieldSelect = qsStrict<HTMLSelectElement>("#searchFieldSelect");
 		const fieldInput = qsStrict<HTMLInputElement>("#searchFieldInput");
 		const statusSelect = qsStrict<HTMLSelectElement>("#searchStatus select");
+		const hadStatusAllOption = statusSelect.querySelector('option[value=""]') != null;
+		const ensureStatusAllOption = () => {
+			if (statusSelect.querySelector('option[value=""]') == null) {
+				const allOption = document.createElement("option");
+				allOption.value = "";
+				allOption.textContent = "すべて";
+				statusSelect.insertBefore(allOption, statusSelect.firstChild);
+			}
+		};
+		ensureStatusAllOption();
+		if (!hadStatusAllOption) {
+			statusSelect.value = "";
+		}
 		let lastDoc: DocumentSnapshot | undefined = undefined;
 		const tbody = qsStrict<HTMLTableSectionElement>("tbody", this.contentsTableList);
 		const getSelectedCheckboxValues = (name: string): string[] => {
@@ -38,15 +51,9 @@ export class ContentCRUDHandler extends EventTarget implements CRUDHandler {
 				(cb) => cb.value,
 			);
 		};
-
-		const loadContent = async (reset = false) => {
-			if (reset) {
-				lastDoc = undefined;
-				tbody.innerHTML = "";
-			}
-
+		const buildFilter = (): ContentListFilter => {
 			const fieldValue = fieldInput.value.trim() || undefined;
-			const filter: ContentListFilter = {
+			return {
 				id: fieldSelect.value === "id" ? fieldValue : undefined,
 				userId: fieldSelect.value === "userId" ? fieldValue : undefined,
 				userName: fieldSelect.value === "userName" ? fieldValue : undefined,
@@ -55,11 +62,19 @@ export class ContentCRUDHandler extends EventTarget implements CRUDHandler {
 				status: statusSelect.value.trim() || undefined,
 				conditions: getSelectedCheckboxValues("filterConditions") as ContentSearchCondition[],
 			};
+		};
+		let activeFilter: ContentListFilter = buildFilter();
+
+		const loadContent = async (reset = false) => {
+			if (reset) {
+				lastDoc = undefined;
+				tbody.innerHTML = "";
+			}
 
 			readMoreBtn.disabled = true;
 			let snapshot: QuerySnapshot<DocumentData> | undefined;
 			try {
-				snapshot = await this.listContents(LIMIT + 1, lastDoc, filter);
+				snapshot = await this.listContents(LIMIT + 1, lastDoc, activeFilter);
 				const docs = snapshot.docs.slice(0, LIMIT);
 				docs.forEach((doc) => {
 					const data = doc.data() as ContentRecord;
@@ -69,7 +84,7 @@ export class ContentCRUDHandler extends EventTarget implements CRUDHandler {
 					tbody.appendChild(tr);
 				});
 
-				lastDoc = snapshot.docs[LIMIT - 1];
+				lastDoc = docs.length > 0 ? docs[docs.length - 1] : undefined;
 				const hasMore = snapshot.docs.length > LIMIT;
 				readMoreBtn.disabled = !hasMore;
 				readMoreBtn.style.display = hasMore ? "" : "none";
@@ -87,7 +102,10 @@ export class ContentCRUDHandler extends EventTarget implements CRUDHandler {
 		const freshFilterBtn = resetBtn(filterBtn);
 		readMoreBtn = resetBtn(readMoreBtn);
 
-		freshFilterBtn.addEventListener("click", () => loadContent(true));
+		freshFilterBtn.addEventListener("click", () => {
+			activeFilter = buildFilter();
+			loadContent(true);
+		});
 		readMoreBtn.addEventListener("click", () => loadContent());
 		await loadContent(true);
 	}

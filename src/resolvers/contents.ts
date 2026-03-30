@@ -1,8 +1,10 @@
 import {
 	collection,
+	doc,
 	DocumentData,
 	DocumentSnapshot,
 	Firestore,
+	getDoc,
 	getDocs,
 	limit,
 	orderBy,
@@ -12,6 +14,7 @@ import {
 	startAfter,
 	where,
 } from "firebase/firestore";
+import { ContentRecord } from "../types";
 
 export type ContentSearchCondition = "warning" | "noThumbnail";
 
@@ -118,4 +121,16 @@ export async function listContents(
 		return snapshot;
 	}
 	return withFilteredDocs(snapshot, filteredDocs);
+}
+
+export async function getContent(firestore: Firestore, id: string): Promise<ContentRecord | null> {
+	const snapshot = await getDoc(doc(firestore, "contents", id));
+	if (!snapshot.exists()) {
+		return null;
+	}
+	const data = snapshot.data() as ContentRecord;
+	return {
+		...data,
+		id,
+	};
 }

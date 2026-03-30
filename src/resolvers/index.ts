@@ -42,6 +42,16 @@ export async function listFeedbacks(firestore: Firestore, userId: string, limitC
 	return getDocs(queryRef);
 }
 
+export async function listFeedbacksByContentId(
+	firestore: Firestore,
+	userId: string,
+	contentId: string,
+	limitCount: number = 20,
+) {
+	const collectionRef = collection(firestore, `users/${userId}/feedbacks`);
+	return getDocs(query(collectionRef, where("contentId", "==", contentId), limit(limitCount)));
+}
+
 export async function listMyFeedbacks(firestore: Firestore, userId: string, limitCount?: number) {
 	const collectionRef = collection(firestore, `users/${userId}/myFeedbacks`);
 	const queryRef =

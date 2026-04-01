@@ -1,7 +1,8 @@
 import { Firestore, Timestamp } from "@google-cloud/firestore";
 import * as fw from "../fw";
-import type { ContentRecord, ReportRecord } from "../types";
+import type { ContentRecord, ManageUser, ReportRecord } from "../types";
 import { eraseUndefined } from "../utils";
+import { FieldValue } from "firebase-admin/firestore";
 
 export function updateUser(firestore: Firestore, uid: string, name: string) {
 	return firestore.runTransaction(async (transaction) => {
@@ -87,4 +88,31 @@ export async function deleteReport(firestore: Firestore, id: string) {
 		throw new fw.types.NotFound(`Report with id ${id} not found`);
 	}
 	await reportDoc.delete();
+}
+
+export function updateManageUser(firestore: Firestore, manageUser: Pick<ManageUser, "id" | "name" | "role">) {
+	return firestore.runTransaction(async (transaction) => {
+		const manageUserDoc = firestore.collection("manageUsers").doc(manageUser.id);
+		const snapshot = await transaction.get(manageUserDoc);
+		if (!snapshot.exists) {
+			throw new fw.types.NotFound(`ManageUser with id ${manageUser.id} not found`);
+		}
+		transaction.update(
+			manageUserDoc,
+			eraseUndefined({
+				name: manageUser.name,
+				role: manageUser.role ?? FieldValue.delete(),
+				updatedAt: Timestamp.now(),
+			}),
+		);
+	});
+}
+
+export async function deleteManageUser(firestore: Firestore, id: string) {
+	const manageUserDoc = firestore.collection("manageUsers").doc(id);
+	const snapshot = await manageUserDoc.get();
+	if (!snapshot.exists) {
+		throw new fw.types.NotFound(`ManageUser with id ${id} not found`);
+	}
+	await manageUserDoc.delete();
 }

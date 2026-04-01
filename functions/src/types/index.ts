@@ -47,7 +47,9 @@ export interface ReportRecord {
 
 export interface ManageUser {
 	id: string;
-	role: "administrator";
+	name: string;
+	note?: string | null;
+	role?: "administrator";
 	createdAt?: Timestamp | null;
 	updatedAt?: Timestamp | null;
 }

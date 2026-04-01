@@ -86,10 +86,11 @@ export interface AppState {
 
 export interface ManageUser {
 	id: string;
-	role: "administrator";
 	name: string;
-	createdAt: Timestamp;
-	updatedAt: Timestamp;
+	note?: string | null;
+	role?: "administrator";
+	createdAt?: Timestamp | null;
+	updatedAt?: Timestamp | null;
 }
 
 export interface ReportRecord {

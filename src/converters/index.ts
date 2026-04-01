@@ -1,5 +1,5 @@
 import { createBasicActionColumn, createTextTd, createTextTdWithCss } from "../helpers";
-import { ContentRecord, FeedbackRecord, ReportRecord } from "../types";
+import { ContentRecord, FeedbackRecord, ManageUser, ReportRecord } from "../types";
 
 export function convertContentToHtmlRow(content: ContentRecord) {
 	const tr = document.createElement("tr");
@@ -63,5 +63,15 @@ export function convertContentFeedbackToHtmlRow(feedback: FeedbackRecord) {
 	tr.appendChild(createTextTd(feedback.title));
 	tr.appendChild(createTextTd(feedback.detail));
 	tr.dataset.id = `${feedback.id}`;
+	return tr;
+}
+
+export function convertManageUserToHtmlRow(user: ManageUser) {
+	const tr = document.createElement("tr");
+	tr.appendChild(createTextTd(user.id));
+	tr.appendChild(createTextTd(user.name));
+	tr.appendChild(createTextTd(user.note ?? "-"));
+	tr.appendChild(createTextTd(user.role ?? "-"));
+	tr.dataset.id = user.id;
 	return tr;
 }

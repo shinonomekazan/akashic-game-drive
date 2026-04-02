@@ -5,6 +5,8 @@ import { manage } from "./resolvers";
 import {
 	ContentCRUDHandler,
 	ContentDetailHandler,
+	ManageUserCRUDHandler,
+	ManageUserDetailHandler,
 	ReportCRUDHandler,
 	ReportDetailHandler,
 	UserHandler,
@@ -20,7 +22,7 @@ type ManageMenuItem = {
 const MANAGE_MENU_ITEMS: ManageMenuItem[] = [
 	{ label: "ユーザー管理", href: "/manage/users/" },
 	{ label: "コンテンツ管理", href: "/manage/contents/" },
-	{ label: "管理ユーザー管理", href: "" },
+	{ label: "管理ユーザー管理", href: "/manage/manageUsers/" },
 	{ label: "レポート管理", href: "/manage/reports/" },
 ];
 
@@ -81,6 +83,49 @@ export class Manage extends App {
 				helpers.attachDetailHandler(usersTableList, userHandler);
 			});
 			const openDetailModal = helpers.attachDetailHandler(usersTableList, userHandler);
+			if (openDetailModal == null) throw new Error("DetailModalがありません");
+
+			helpers.attachIdDetailStateHandler(openDetailModal);
+		});
+	}
+
+	async manageUsersPage() {
+		this.withAuth("/manage/manageUsers/index.html", async (_user, hasPermission) => {
+			if (!hasPermission) {
+				this.setContent(
+					`
+						<div class="manage-page d-flex flex-column justify-content-center align-items-center text-center px-3">
+							<div class="manage-top mb-4">
+								<h1 class="manage-title">
+									<span class="manage-title-main">ニコ生ゲーム置き場（仮）</span>
+									<span class="manage-title-sub">管理ツール – 管理ユーザー管理</span>
+								</h1>
+								<p class="manage-error-message">このツールを利用する権限がありません</p>
+							</div>
+						</div>
+					`,
+					true,
+				);
+				return;
+			}
+
+			const manageUsersContent = utils.qsStrict<HTMLDivElement>("#manageUsersContent");
+			manageUsersContent.classList.remove("d-none");
+
+			const manageUsersTableList = utils.qsStrict<HTMLTableElement>("#manageUsersTableList");
+			const crudHandler = new ManageUserCRUDHandler(
+				this.firebase.firestore,
+				manageUsersTableList,
+				this.apiClient,
+			);
+			await crudHandler.refreshManageUser();
+			const manageUserHandler = new ManageUserDetailHandler(this.firebase.firestore, this.apiClient, () =>
+				crudHandler.refreshManageUser(),
+			);
+			crudHandler.addEventListener("refresh", () => {
+				helpers.attachDetailHandler(manageUsersTableList, manageUserHandler);
+			});
+			const openDetailModal = helpers.attachDetailHandler(manageUsersTableList, manageUserHandler);
 			if (openDetailModal == null) throw new Error("DetailModalがありません");
 
 			helpers.attachIdDetailStateHandler(openDetailModal);

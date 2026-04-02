@@ -74,6 +74,10 @@
 			{
 				"source": "/manage/contents/*",
 				"destination": "/manage/contents/index.html"
+			},
+			{
+				"source": "/manage/manageUsers/*",
+				"destination": "/manage/manageUsers/index.html"
 			}
 		],
 		"headers": [

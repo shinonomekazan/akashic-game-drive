@@ -48,7 +48,7 @@ interface UpdateContentParams {
 	thumbnailUrl?: string;
 }
 
-interface DeleteContentParams {
+interface DeleteParams {
 	authorization: string;
 	id: string;
 }
@@ -58,6 +58,13 @@ interface CreateContentUploadUrlParams {
 	kind: "thumbnail";
 	mimeType: string;
 	contentId: string;
+}
+
+interface UpdateManageUser {
+	authorization: string;
+	id: string;
+	name: string;
+	role?: "administrator";
 }
 
 export class ManageController extends BaseController {
@@ -165,6 +172,7 @@ export class ManageController extends BaseController {
 					}) as CreateContentUploadUrlParams,
 			),
 		]);
+
 		this.registerRoute(router, "DELETE", "/content/:id", this.deleteContent, [
 			fw.params.InstantValidator(
 				[params.headerBearerTokenValidator(), validators.param("id").isString().notEmpty()],
@@ -172,7 +180,36 @@ export class ManageController extends BaseController {
 					({
 						authorization: context.req.headers.authorization,
 						id: context.req.params.id,
-					}) as DeleteContentParams,
+					}) as DeleteParams,
+			),
+		]);
+
+		this.registerRoute(router, "PUT", "/manageUser/:id", this.updateManageUser, [
+			fw.params.InstantValidator(
+				[
+					params.headerBearerTokenValidator(),
+					validators.param("id").isString().notEmpty(),
+					validators.body("name").isString().notEmpty(),
+					validators.body("role").optional().isIn(["administrator"]),
+				],
+				(context) =>
+					({
+						authorization: context.req.headers.authorization,
+						id: context.req.params.id,
+						name: context.req.body.name,
+						role: context.req.body.role,
+					}) as UpdateManageUser,
+			),
+		]);
+
+		this.registerRoute(router, "DELETE", "/manageUser/:id", this.deleteManageUser, [
+			fw.params.InstantValidator(
+				[params.headerBearerTokenValidator(), validators.param("id").isString().notEmpty()],
+				(context) =>
+					({
+						authorization: context.req.headers.authorization,
+						id: context.req.params.id,
+					}) as DeleteParams,
 			),
 		]);
 
@@ -276,7 +313,7 @@ export class ManageController extends BaseController {
 	}
 
 	async deleteContent(context: Context) {
-		const p = context.params as DeleteContentParams;
+		const p = context.params as DeleteParams;
 		await this.requireAdministrator(p.authorization);
 
 		const content = await resolvers.contents.resolve(this.app.firestore, p.id);
@@ -328,5 +365,27 @@ export class ManageController extends BaseController {
 			filePath: destination,
 			url,
 		};
+	}
+
+	async updateManageUser(context: Context) {
+		const p = context.params as UpdateManageUser;
+		await this.requireAdministrator(p.authorization);
+
+		await stores.manage.updateManageUser(this.app.firestore, {
+			id: p.id,
+			name: p.name,
+			role: p.role,
+		});
+
+		return { result: "ok" };
+	}
+
+	async deleteManageUser(context: Context) {
+		const p = context.params as DeleteParams;
+		await this.requireAdministrator(p.authorization);
+
+		await stores.manage.deleteManageUser(this.app.firestore, p.id);
+
+		return { result: "ok" };
 	}
 }

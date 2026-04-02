@@ -22,7 +22,7 @@ export class ManageUserDetailHandler extends EventTarget implements DetailHandle
 	async onDetail(form: HTMLFormElement, id: string): Promise<void | false> {
 		const userDoc = await manage.resolvers(this.firestore, id);
 		if (userDoc == null) {
-			window.alert("コンテンツが見つかりませんでした。");
+			window.alert("管理ユーザーが見つかりませんでした。");
 			return false;
 		}
 		pushQueryState({ id });
@@ -117,7 +117,6 @@ export class ManageUserDetailHandler extends EventTarget implements DetailHandle
 			try {
 				deleteBtn.disabled = true;
 				await deleteManageUser(this.api, currentUser.id);
-				pushQueryState({ id: undefined });
 				const modalElement = document.getElementById("detailModal")!;
 				const bsModal = getOrCreateModal(modalElement);
 				bsModal.hide();

@@ -190,7 +190,7 @@ export class ManageController extends BaseController {
 					params.headerBearerTokenValidator(),
 					validators.param("id").isString().notEmpty(),
 					validators.body("name").isString().notEmpty(),
-					validators.body("role").optional().isString(),
+					validators.body("role").optional().isIn(["administrator"]),
 				],
 				(context) =>
 					({

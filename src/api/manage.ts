@@ -53,7 +53,7 @@ export function deleteContent(client: Client, id: string) {
 	return client.callWithAuthorization<{ result: string }>("DELETE", `/manage/content/${id}`);
 }
 
-export function updateManageUser(client: Client, id: string, object: { name: string; role?: string }) {
+export function updateManageUser(client: Client, id: string, object: { name: string; role?: "administrator" | null }) {
 	return client.callWithAuthorization<{ result: string }>("PUT", `/manage/manageUser/${id}`, JSON.stringify(object));
 }
 

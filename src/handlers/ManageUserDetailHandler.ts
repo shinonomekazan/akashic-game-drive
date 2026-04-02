@@ -85,7 +85,7 @@ export class ManageUserDetailHandler extends EventTarget implements DetailHandle
 				nameInput.focus();
 				return;
 			}
-			const role = roleSelect.value;
+			const role = roleSelect.value as "administrator" | "";
 
 			try {
 				await updateManageUser(this.api, currentUser.id, {

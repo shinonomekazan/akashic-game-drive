@@ -324,7 +324,7 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 		const reportsTbody = qsStrict<HTMLTableSectionElement>("tbody", reportsTableList);
 		const totalReport = qsStrict<HTMLParagraphElement>("#totalReport");
 		reportsTbody.innerHTML = "";
-		
+
 		try {
 			const [reportsDoc, reportCount] = await Promise.all([
 				listReportByContentId(this.firestore, contentId),

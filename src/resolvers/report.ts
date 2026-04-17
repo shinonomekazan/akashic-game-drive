@@ -79,3 +79,10 @@ export async function listReport(
 
 	return getDocs(query(collectionRef, ...constraints));
 }
+
+export async function listReportByContentId(firestore: Firestore, contentId: string, limitCount: number = 10) {
+	const collectionRef = collection(firestore, `reports`);
+	return getDocs(
+		query(collectionRef, where("contentId", "==", contentId), orderBy("createdAt", "desc"), limit(limitCount)),
+	);
+}

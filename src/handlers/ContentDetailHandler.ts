@@ -322,19 +322,25 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 	async showListReportTable(contentId: string) {
 		const reportsTableList = qsStrict<HTMLTableElement>("#reportsTableList");
 		const reportsTbody = qsStrict<HTMLTableSectionElement>("tbody", reportsTableList);
-		reportsTbody.innerHTML = "";
-		const [reportsDoc, reportCount] = await Promise.all([
-			listReportByContentId(this.firestore, contentId),
-			countReportsByContentId(this.firestore, contentId),
-		]);
-		reportsDoc.docs.forEach((doc) => {
-			const reportData = { id: doc.id, ...doc.data() } as ReportRecord;
-			const tr = convertContentReportToHtmlRow(reportData);
-			reportsTbody.appendChild(tr);
-		});
-
 		const totalReport = qsStrict<HTMLParagraphElement>("#totalReport");
-		totalReport.textContent = `通報件数：${reportCount}件`;
+		reportsTbody.innerHTML = "";
+		
+		try {
+			const [reportsDoc, reportCount] = await Promise.all([
+				listReportByContentId(this.firestore, contentId),
+				countReportsByContentId(this.firestore, contentId),
+			]);
+			reportsDoc.docs.forEach((doc) => {
+				const reportData = { id: doc.id, ...doc.data() } as ReportRecord;
+				const tr = convertContentReportToHtmlRow(reportData);
+				reportsTbody.appendChild(tr);
+			});
+			totalReport.textContent = `通報件数：${reportCount}件`;
+		} catch {
+			// 通報一覧の取得に失敗しても詳細モーダルの表示は継続する
+			reportsTbody.innerHTML = "";
+			totalReport.textContent = "通報一覧の取得に失敗しました";
+		}
 	}
 
 	onCloseModal(): void {

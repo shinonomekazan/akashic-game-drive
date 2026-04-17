@@ -81,7 +81,7 @@ export function convertContentReportToHtmlRow(report: ReportRecord) {
 	tr.appendChild(createTextTd(report.id));
 	tr.appendChild(createTextTd(report.reporterId ?? "-"));
 	tr.appendChild(createTextTd(report.category ?? "-"));
-	tr.appendChild(createTextTd(report.description ?? "-"));
+	tr.appendChild(createTextTdWithCss(report.description ?? "-"));
 	tr.appendChild(createTextTd(report.status ?? "-"));
 	tr.dataset.id = `${report.id}`;
 	return tr;

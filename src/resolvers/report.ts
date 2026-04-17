@@ -2,6 +2,7 @@ import {
 	collection,
 	doc,
 	DocumentSnapshot,
+	getCountFromServer,
 	getDoc,
 	getDocs,
 	limit,
@@ -85,4 +86,10 @@ export async function listReportByContentId(firestore: Firestore, contentId: str
 	return getDocs(
 		query(collectionRef, where("contentId", "==", contentId), orderBy("createdAt", "desc"), limit(limitCount)),
 	);
+}
+
+export async function countReportsByContentId(firestore: Firestore, contentId: string) {
+	const collectionRef = collection(firestore, "reports");
+	const snapshot = await getCountFromServer(query(collectionRef, where("contentId", "==", contentId)));
+	return snapshot.data().count;
 }

@@ -10,7 +10,7 @@ import { isDebugMode, qsStrict } from "../utils";
 import { DetailHandler } from "./types";
 import { listFeedbacksByContentId } from "../resolvers";
 import { convertContentFeedbackToHtmlRow, convertContentReportToHtmlRow } from "../converters";
-import { listReportByContentId } from "../resolvers/report";
+import { countReportsByContentId, listReportByContentId } from "../resolvers/report";
 
 const MAX_THUMB_SIZE = 20 * 1024 * 1024;
 const CACHE_CONTROL = "public,max-age=604800,immutable";
@@ -323,7 +323,10 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 		const reportsTableList = qsStrict<HTMLTableElement>("#reportsTableList");
 		const reportsTbody = qsStrict<HTMLTableSectionElement>("tbody", reportsTableList);
 		reportsTbody.innerHTML = "";
-		const reportsDoc = await listReportByContentId(this.firestore, contentId);
+		const [reportsDoc, reportCount] = await Promise.all([
+			listReportByContentId(this.firestore, contentId),
+			countReportsByContentId(this.firestore, contentId),
+		]);
 		reportsDoc.docs.forEach((doc) => {
 			const reportData = { id: doc.id, ...doc.data() } as ReportRecord;
 			const tr = convertContentReportToHtmlRow(reportData);
@@ -331,7 +334,6 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 		});
 
 		const totalReport = qsStrict<HTMLParagraphElement>("#totalReport");
-		const reportCount = reportsDoc.size;
 		totalReport.textContent = `通報件数：${reportCount}件`;
 	}
 

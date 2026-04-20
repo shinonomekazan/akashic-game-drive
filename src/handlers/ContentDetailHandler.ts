@@ -5,11 +5,12 @@ import { Client } from "../api/client";
 import { createContentUploadUrl, deleteContent, updateContent } from "../api/manage";
 import { getOrCreateModal, pushQueryState, resetBtn, setFormValuesByPropsWithTimeConvert } from "../helpers";
 import { getContent } from "../resolvers/contents";
-import { ContentRecord, FeedbackRecord } from "../types";
+import { ContentRecord, FeedbackRecord, ReportRecord } from "../types";
 import { isDebugMode, qsStrict } from "../utils";
 import { DetailHandler } from "./types";
 import { listFeedbacksByContentId } from "../resolvers";
-import { convertContentFeedbackToHtmlRow } from "../converters";
+import { convertContentFeedbackToHtmlRow, convertContentReportToHtmlRow } from "../converters";
+import { countReportsByContentId, listReportByContentId } from "../resolvers/report";
 
 const MAX_THUMB_SIZE = 20 * 1024 * 1024;
 const CACHE_CONTROL = "public,max-age=604800,immutable";
@@ -166,16 +167,6 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 		setThumbnail(currentContent.thumbnailUrl);
 		thumbInput.addEventListener("change", updatePreview);
 
-		const feedbacksTableList = qsStrict<HTMLTableElement>("#feedbacksTableList");
-		const feedbacksTbody = qsStrict<HTMLTableSectionElement>("tbody", feedbacksTableList);
-		feedbacksTbody.innerHTML = "";
-		const feedbacksDoc = await listFeedbacksByContentId(this.firestore, currentContent.ownerId, id, 50);
-		feedbacksDoc.docs.forEach((doc) => {
-			const feedbackData = { id: doc.id, ...doc.data() } as FeedbackRecord;
-			const tr = convertContentFeedbackToHtmlRow(feedbackData);
-			feedbacksTbody.appendChild(tr);
-		});
-
 		let editBtn = resetBtn(qsStrict<HTMLButtonElement>("#editBtn"));
 		let deleteBtn = resetBtn(qsStrict<HTMLButtonElement>("#deleteBtn"));
 
@@ -295,6 +286,9 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 			setFormValues(currentContent);
 			setViewMode();
 		});
+
+		await this.showListFeedbackTable(id, currentContent.ownerId);
+		await this.showListReportTable(id);
 	}
 
 	toDetailFormContent(content: ContentRecord): Omit<ContentRecord, "warnings"> & { warnings?: string } {
@@ -311,6 +305,42 @@ export class ContentDetailHandler extends EventTarget implements DetailHandler {
 			return hasImageExt;
 		}
 		return IMAGE_MIME_TYPES.includes(file.type) || hasImageExt;
+	}
+
+	async showListFeedbackTable(contentId: string, ownerId: string) {
+		const feedbacksTableList = qsStrict<HTMLTableElement>("#feedbacksTableList");
+		const feedbacksTbody = qsStrict<HTMLTableSectionElement>("tbody", feedbacksTableList);
+		feedbacksTbody.innerHTML = "";
+		const feedbacksDoc = await listFeedbacksByContentId(this.firestore, ownerId, contentId, 50);
+		feedbacksDoc.docs.forEach((doc) => {
+			const feedbackData = { id: doc.id, ...doc.data() } as FeedbackRecord;
+			const tr = convertContentFeedbackToHtmlRow(feedbackData);
+			feedbacksTbody.appendChild(tr);
+		});
+	}
+
+	async showListReportTable(contentId: string) {
+		const reportsTableList = qsStrict<HTMLTableElement>("#reportsTableList");
+		const reportsTbody = qsStrict<HTMLTableSectionElement>("tbody", reportsTableList);
+		const totalReport = qsStrict<HTMLParagraphElement>("#totalReport");
+		reportsTbody.innerHTML = "";
+
+		try {
+			const [reportsDoc, reportCount] = await Promise.all([
+				listReportByContentId(this.firestore, contentId),
+				countReportsByContentId(this.firestore, contentId),
+			]);
+			reportsDoc.docs.forEach((doc) => {
+				const reportData = { id: doc.id, ...doc.data() } as ReportRecord;
+				const tr = convertContentReportToHtmlRow(reportData);
+				reportsTbody.appendChild(tr);
+			});
+			totalReport.textContent = `通報件数：${reportCount}件`;
+		} catch {
+			// 通報一覧の取得に失敗しても詳細モーダルの表示は継続する
+			reportsTbody.innerHTML = "";
+			totalReport.textContent = "通報一覧の取得に失敗しました";
+		}
 	}
 
 	onCloseModal(): void {

@@ -376,13 +376,22 @@ export async function handleStorageZipFinalize(event: {
 	await processZipFile(object.bucket, object.name, contentRef);
 }
 
+function parseGameJsonEntry(gameJsonEntry: NormalizedEntry): Record<string, unknown> {
+	try {
+		return JSON.parse(gameJsonEntry.entry.getData().toString("utf8")) as Record<string, unknown>;
+	} catch {
+		// validateZipContents() の検証結果と整合するよう、不正な game.json は同系統のエラーとして扱う
+		throw new Error(WARNING_INVALID_FILE_LIST);
+	}
+}
+
 function buildGameDriveJson(entries: NormalizedEntry[], extractPrefix: string): Buffer {
 	const gameJsonEntry = entries.find((e) => e.normalizedPath === "game.json");
-	if (!gameJsonEntry) throw new Error("game.json not found");
+	if (!gameJsonEntry) throw new Error(WARNING_GAME_JSON_MISSING);
 
-	const gameJson = JSON.parse(gameJsonEntry.entry.getData().toString("utf8")) as Record<string, unknown>;
+	const gameJson = parseGameJsonEntry(gameJsonEntry);
 
-	const assets = gameJson.assets as
+	const assets = (gameJson.assets ?? gameJson.asset) as
 		| Record<string, { path?: string; virtualPath?: string; [key: string]: unknown }>
 		| undefined;
 	if (assets) {

@@ -397,8 +397,10 @@ function buildGameDriveJson(entries: NormalizedEntry[], extractPrefix: string): 
 	if (assets) {
 		for (const asset of Object.values(assets)) {
 			if (typeof asset.path === "string") {
+				if (asset.virtualPath == null) {
+					asset.virtualPath = asset.path;
+				}
 				const fullObjectName = path.posix.join(extractPrefix, asset.path);
-				asset.virtualPath = asset.path;
 				asset.path = encodeURIComponent(fullObjectName) + "?alt=media";
 			}
 		}

@@ -254,13 +254,23 @@ async function runWithConcurrency<T>(items: T[], limit: number, worker: (item: T
 	await Promise.all(workers);
 }
 
-async function extractZipEntries(entries: NormalizedEntry[], bucket: Bucket, targetPrefix: string) {
+async function extractZipEntries(
+	entries: NormalizedEntry[],
+	bucket: Bucket,
+	targetPrefix: string,
+	bucketName: string,
+) {
 	const tasks = entries.map((entry) => async () => {
 		const data = entry.entry.getData();
 		const destination = path.posix.join(targetPrefix, entry.normalizedPath);
 		await bucket.file(destination).save(data, { resumable: false });
 	});
 	await runWithConcurrency(tasks, EXTRACTION_CONCURRENCY, (task) => task());
+
+	// create game-drive.json
+	const gameDriveJson = buildGameDriveJson(entries, targetPrefix);
+	const gameDriveDest = path.posix.join(targetPrefix, "game-drive.json");
+	await bucket.file(gameDriveDest).save(gameDriveJson, { resumable: false, contentType: "application/json" });
 }
 
 function buildStorageUrl(bucketName: string, objectName: string) {
@@ -306,7 +316,7 @@ async function processZipFile(bucketName: string, objectName: string, contentRef
 		const extractPrefix = buildExtractPrefix(objectName);
 		let deletedZip = false;
 		if (result.state === "ok") {
-			await extractZipEntries(entries, bucket, extractPrefix);
+			await extractZipEntries(entries, bucket, extractPrefix, bucketName);
 			try {
 				await file.delete();
 				deletedZip = true;
@@ -364,4 +374,37 @@ export async function handleStorageZipFinalize(event: {
 	if (snapshot.empty) return;
 	const contentRef = snapshot.docs[0].ref;
 	await processZipFile(object.bucket, object.name, contentRef);
+}
+
+function parseGameJsonEntry(gameJsonEntry: NormalizedEntry): Record<string, unknown> {
+	try {
+		return JSON.parse(gameJsonEntry.entry.getData().toString("utf8")) as Record<string, unknown>;
+	} catch {
+		// validateZipContents() の検証結果と整合するよう、不正な game.json は同系統のエラーとして扱う
+		throw new Error(WARNING_INVALID_FILE_LIST);
+	}
+}
+
+function buildGameDriveJson(entries: NormalizedEntry[], extractPrefix: string): Buffer {
+	const gameJsonEntry = entries.find((e) => e.normalizedPath === "game.json");
+	if (!gameJsonEntry) throw new Error(WARNING_GAME_JSON_MISSING);
+
+	const gameJson = parseGameJsonEntry(gameJsonEntry);
+
+	const assets = (gameJson.assets ?? gameJson.asset) as
+		| Record<string, { path?: string; virtualPath?: string; [key: string]: unknown }>
+		| undefined;
+	if (assets) {
+		for (const asset of Object.values(assets)) {
+			if (typeof asset.path === "string") {
+				if (asset.virtualPath == null) {
+					asset.virtualPath = asset.path;
+				}
+				const fullObjectName = path.posix.join(extractPrefix, asset.path);
+				asset.path = encodeURIComponent(fullObjectName) + "?alt=media";
+			}
+		}
+	}
+
+	return Buffer.from(JSON.stringify(gameJson, null, "\t"), "utf8");
 }

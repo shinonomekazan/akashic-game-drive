@@ -16,6 +16,8 @@
 		"firebase": "^11.7.1"
 	},
 	"devDependencies": {
+		"@akashic/akashic-gameview": "file:lib/akashic-gameview-3.2.0.tgz",
+		"@akashic/akashic-gameview-web": "file:lib/akashic-gameview-web-3.3.5.tgz",
 		"@types/bootstrap": "^5.2.10",
 		"bootstrap": "^5.3.6",
 		"css-loader": "^7.1.2",

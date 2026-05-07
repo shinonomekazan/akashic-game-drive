@@ -17,6 +17,7 @@ import { createContent, createContentUploadUrl, getContentById, listMyContents, 
 import { createFeedback, createUser, getUserById, listUserContents } from "./api/users";
 import { loadContentFiles } from "./downloader";
 import { createReport } from "./api/reports";
+import { Controller } from "./game";
 
 export class App {
 	firebase: FirebaseInstance;
@@ -206,6 +207,9 @@ export class App {
 				break;
 			case "content-view":
 				await this.renderContentView();
+				break;
+			case "content-play":
+				await this.renderContentPlay();
 				break;
 			case "my":
 				await this.renderMy();
@@ -858,6 +862,55 @@ export class App {
 			showFeedbackLoginPrompt: !isOwnPage && !isSignedIn,
 			showReportForm: !isOwnPage && isSignedIn,
 		});
+	}
+
+	async renderContentPlay() {
+		const signedIn = this.state.user !== null;
+		if (!signedIn) {
+			utils.navigateTo("/login");
+			return;
+		}
+
+		if (this.state.profileLoading) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			return;
+		}
+
+		if (!this.state.profileLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadUserProfile();
+			await this.render();
+			return;
+		}
+
+		if (this.state.needsProfile) {
+			this.renderProfileSetup();
+			return;
+		}
+
+		if (this.state.contentsLoading) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			return;
+		}
+
+		if (!this.state.contentsLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadMyContents();
+			await this.render();
+			return;
+		}
+
+		const route = this.state.route;
+		const contentId = route.name === "content-play" ? route.contentId : "";
+		const content = this.state.contents.find((item) => item.id === contentId);
+		if (!content) {
+			this.showToast("コンテンツが見つかりません", "error");
+			utils.navigateTo("/my");
+			return;
+		}
+
+		this.setContent(`<div id="contentContainer" class="w-100"></div>`);
+		this.renderGameScreen(contentId);
 	}
 
 	async loadUserProfile() {
@@ -1609,7 +1662,7 @@ export class App {
 					<form id="report-form">
 						<div class="modal-body">
 						<p class="text-muted small">問題がある内容について教えてください。運営が内容を確認いたします。</p>
-						
+
 						<div class="mb-3">
 							<label for="report-category" class="form-label fw-bold">理由（必須）</label>
 							<select class="form-select" id="report-category" required>
@@ -2010,6 +2063,12 @@ export class App {
 											content.id,
 										)}">編集</button>`
 									: "";
+								const executionButton =
+									content.state === "ok"
+										? `<button class="btn btn-sm btn-outline-secondary js-execution-content" type="button" data-content-id="${utils.escapeHtml(
+												content.id,
+											)}">実行</button>`
+										: "";
 								return `
 									<div class="card shadow-sm">
 										<div class="card-body">
@@ -2022,6 +2081,7 @@ export class App {
 													<div class="mt-1">${stateLabelHtml}</div>
 												</div>
 												${editButton}
+												${executionButton}
 											</div>
 										</div>
 									</div>
@@ -2115,6 +2175,18 @@ export class App {
 		this.bindMyActions();
 	}
 
+	renderGameScreen(contentId: string) {
+		const container = utils.qsStrict<HTMLDivElement>("#contentContainer");
+		const playerId = "dummy";
+		const controller = new Controller(playerId);
+		controller.generateAgv(container, 1280, 720);
+
+		const userId = this.state.user?.uid ?? "";
+
+		const url = `https://firebasestorage.googleapis.com/v0/b/akashic-game-drive.firebasestorage.app/o/uploads%2F${userId}%2Fcontents%2Fzip%2F${contentId}%2Fcontent.json?alt=media`; //content.jsonはゲームのサーバ保存時に作る必要あり
+		controller.start(url);
+	}
+
 	bindMyActions() {
 		const logoutBtn = utils.qs<HTMLButtonElement>("#logout");
 		if (logoutBtn) {
@@ -2176,6 +2248,15 @@ export class App {
 			if (!contentId) return;
 			button.addEventListener("click", () => {
 				utils.navigateTo(`/contents/${encodeURIComponent(contentId)}/edit`);
+			});
+		});
+
+		const executionButtons = utils.qsStrictAll<HTMLButtonElement>(this.rootEl, ".js-execution-content");
+		executionButtons.forEach((button) => {
+			const contentId = button.dataset.contentId;
+			if (!contentId) return;
+			button.addEventListener("click", () => {
+				utils.navigateTo(`/contents/${encodeURIComponent(contentId)}/play`);
 			});
 		});
 

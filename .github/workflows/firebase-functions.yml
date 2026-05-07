@@ -22,7 +22,7 @@ jobs:
             package-lock.json
             functions/package-lock.json
       - name: デプロイ用.envひな型の作成
-        run: cp ./functions/.env.debug ./functions/.env
+        run: cp ./functions/.env.production ./functions/.env
       - name: npm ci
         run: npm ci && npm --prefix ./functions ci
       - name: Deploy functions

@@ -34,7 +34,7 @@ export function configure(): AppConfig {
 		apiConfig: {
 			baseUrl: `https://${functionsRegion}-${projectId}.cloudfunctions.net/api`,
 			emulatorBaseUrl: `http://127.0.0.1:5001/${projectId}/${functionsRegion}/api`,
-			apiKey: process.env.FUNCTIONS_API_KEY,
+			apiKey: "4a426214-1351-4d65-94fd-cf0e6323a702",
 		},
 	};
 }

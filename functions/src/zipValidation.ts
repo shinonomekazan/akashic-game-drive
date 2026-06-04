@@ -16,6 +16,7 @@ const WARNING_MATH_RANDOM = "Math.randomの利用があります";
 const WARNING_DATE = "Dateの利用があります";
 const CODE_EXTENSIONS = new Set([".js", ".mjs", ".cjs", ".ts", ".tsx"]);
 const EXTRACTION_CONCURRENCY = 10;
+const ASSET_DATE_TIME_ZONE = "Asia/Tokyo";
 
 interface AssetStorageConfig {
 	bucketName: string;
@@ -345,9 +346,55 @@ function buildStorageUrl(bucketName: string, objectName: string) {
 	return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(objectName)}?alt=media`;
 }
 
-function buildAssetExtractPrefix(objectName: string, contentId: string, pathPrefix: string) {
+function buildAssetBasePrefix(objectName: string, pathPrefix: string) {
 	const zipBase = path.posix.basename(objectName).replace(/\.zip$/i, "");
-	return path.posix.join(pathPrefix, contentId, zipBase);
+	return path.posix.join(pathPrefix, zipBase);
+}
+
+async function resolveDailyExtractPrefix(bucket: Bucket, basePrefix: string, date: string) {
+	const listPrefix = `${basePrefix}/${date}_`;
+	const [files] = await bucket.getFiles({ prefix: listPrefix });
+	const pattern = new RegExp(`^${escapeRegExp(listPrefix)}(\\d{3})(?:/|$)`);
+	const maxSequence = files.reduce((max, file) => {
+		const match = file.name.match(pattern);
+		if (!match) return max;
+		return Math.max(max, Number(match[1]));
+	}, 0);
+
+	for (let sequence = maxSequence + 1; ; sequence++) {
+		const sequenceText = sequence.toString().padStart(3, "0");
+		const extractPrefix = `${basePrefix}/${date}_${sequenceText}`;
+		const [exists] = await bucket.file(path.posix.join(extractPrefix, "game.json")).exists();
+		if (!exists) return extractPrefix;
+	}
+}
+
+function formatAssetDate(date: Date) {
+	const parts = new Intl.DateTimeFormat("en", {
+		timeZone: ASSET_DATE_TIME_ZONE,
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).formatToParts(date);
+	const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+	return `${values.year}-${values.month}-${values.day}`;
+}
+
+function escapeRegExp(value: string) {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function deleteFileIfExists(file: ReturnType<Bucket["file"]>) {
+	try {
+		await file.delete();
+		return true;
+	} catch (error) {
+		const code = (error as { code?: number }).code;
+		if (code === 404) {
+			return true;
+		}
+		throw error;
+	}
 }
 
 function parseContentIdFromObjectName(objectName: string) {
@@ -387,19 +434,15 @@ async function processZipFile(
 
 		const assetConfig = await getAssetStorageConfig();
 		const assetBucket = storage.bucket(assetConfig.bucketName);
-		const extractPrefix = buildAssetExtractPrefix(objectName, contentId, assetConfig.pathPrefix);
+		const extractPrefix = await resolveDailyExtractPrefix(
+			assetBucket,
+			buildAssetBasePrefix(objectName, assetConfig.pathPrefix),
+			formatAssetDate(new Date()),
+		);
 		let deletedZip = false;
 		if (result.state === "ok") {
 			await extractZipEntries(entries, assetBucket, extractPrefix, assetConfig.cacheControl);
-			try {
-				await file.delete();
-				deletedZip = true;
-			} catch (error) {
-				const code = (error as { code?: number }).code;
-				if (code === 404) {
-					deletedZip = true;
-				}
-			}
+			deletedZip = await deleteFileIfExists(file);
 		}
 
 		await contentRef.update(

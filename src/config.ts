@@ -8,7 +8,7 @@ const fallbackEnv = {
 	FIREBASE_MESSAGING_SENDER_ID: "74790524710",
 	FIREBASE_APP_ID: "1:74790524710:web:8e19cae4759d77d56fd3e7",
 	FIREBASE_MEASUREMENT_ID: "G-HHV36QKTGK",
-	CONTENT_CDN_BASE_URL: "https://contents.akashic.shinonomekazan.com",
+	CONTENT_CDN_BASE_URL: "https://storage.googleapis.com/akashic-game-drive-contents",
 };
 
 function resolveEnv(key: keyof typeof fallbackEnv): string {

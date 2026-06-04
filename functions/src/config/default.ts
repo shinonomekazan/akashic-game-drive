@@ -4,7 +4,7 @@ const DefaultConfig: Config = {
 	app: {
 		port: 3000,
 		storageBucket: "akashic-game-drive.firebasestorage.app",
-		assetStorageBucket: "contents.akashic.shinonomekazan.com",
+		assetStorageBucket: "akashic-game-drive-contents",
 		assetPathPrefix: "contents",
 		assetCacheControl: "public, max-age=3600",
 	},

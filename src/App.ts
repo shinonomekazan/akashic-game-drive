@@ -1232,12 +1232,12 @@ export class App {
 		const warningsHtml =
 			warningLines.length > 0 ? `<div class="alert alert-warning small mt-2">警告: ${warningText}</div>` : "";
 		const stateLabelHtml = isEdit ? utils.getContentStateLabel(content?.state) : "";
-			const zipName = content?.zipUrl ? utils.getFileNameFromUrl(content.zipUrl) : "";
-			const existingZipLink =
-				isEdit && content?.zipUrl
-					? `<div class="small mt-2">現在のZIP: <a href="${utils.escapeHtml(
-							content.zipUrl,
-						)}" target="_blank" rel="noopener">${utils.escapeHtml(zipName)}</a></div>`
+		const zipName = content?.zipUrl ? utils.getFileNameFromUrl(content.zipUrl) : "";
+		const existingZipLink =
+			isEdit && content?.zipUrl
+				? `<div class="small mt-2">現在のZIP: <a href="${utils.escapeHtml(
+						content.zipUrl,
+					)}" target="_blank" rel="noopener">${utils.escapeHtml(zipName)}</a></div>`
 				: "";
 		this.setContent(`
 			<div class="row justify-content-center">

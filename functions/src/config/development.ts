@@ -6,4 +6,6 @@ const DevelopmentConfig: Config = {
 	...defaultConfig,
 };
 
+DevelopmentConfig.app.assetStorageBucket = DevelopmentConfig.app.storageBucket;
+
 export = DevelopmentConfig;

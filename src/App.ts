@@ -1676,6 +1676,7 @@ export class App {
 					storage: this.firebase.storage,
 					container,
 					isDebugMode: utils.isDebugMode(),
+					contentCdnBaseUrl: this.config.contentCdnBaseUrl,
 					messages: {
 						unavailable: "ダウンロードできません",
 						gameJsonFailed: "game.jsonの取得に失敗しました",

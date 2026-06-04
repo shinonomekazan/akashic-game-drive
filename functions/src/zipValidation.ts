@@ -5,6 +5,8 @@ import { getStorage } from "firebase-admin/storage";
 import type { Bucket } from "@google-cloud/storage";
 import { eraseUndefined } from "./utils";
 import { getFirebaseApp } from "./firebase";
+import * as fw from "./fw";
+import type { Config } from "./config";
 
 const ZIP_MIME_TYPES = ["application/zip", "application/x-zip-compressed"];
 const WARNING_GAME_JSON_MISSING = "game.jsonが見つかりません";
@@ -14,6 +16,12 @@ const WARNING_MATH_RANDOM = "Math.randomの利用があります";
 const WARNING_DATE = "Dateの利用があります";
 const CODE_EXTENSIONS = new Set([".js", ".mjs", ".cjs", ".ts", ".tsx"]);
 const EXTRACTION_CONCURRENCY = 10;
+
+interface AssetStorageConfig {
+	bucketName: string;
+	pathPrefix: string;
+	cacheControl: string;
+}
 
 interface ZipEntry {
 	entryName: string;
@@ -60,6 +68,54 @@ function normalizeZipPath(rawPath: string): string | null {
 
 function isDirectoryEntry(entry: ZipEntry): boolean {
 	return Boolean(entry.isDirectory) || entry.entryName.endsWith("/");
+}
+
+async function getAssetStorageConfig(): Promise<AssetStorageConfig> {
+	const config = await fw.Configure<Config>(path.resolve(__dirname, "config"));
+	return {
+		bucketName: config.app.assetStorageBucket,
+		pathPrefix: config.app.assetPathPrefix.replace(/^\/+|\/+$/g, "") || "contents",
+		cacheControl: config.app.assetCacheControl,
+	};
+}
+
+function detectContentType(filePath: string) {
+	switch (path.posix.extname(filePath).toLowerCase()) {
+		case ".json":
+			return "application/json";
+		case ".js":
+		case ".mjs":
+			return "text/javascript";
+		case ".css":
+			return "text/css";
+		case ".html":
+			return "text/html";
+		case ".png":
+			return "image/png";
+		case ".jpg":
+		case ".jpeg":
+			return "image/jpeg";
+		case ".webp":
+			return "image/webp";
+		case ".gif":
+			return "image/gif";
+		case ".svg":
+			return "image/svg+xml";
+		case ".aac":
+			return "audio/aac";
+		case ".ogg":
+			return "audio/ogg";
+		case ".mp3":
+			return "audio/mpeg";
+		case ".wav":
+			return "audio/wav";
+		case ".woff":
+			return "font/woff";
+		case ".woff2":
+			return "font/woff2";
+		default:
+			return "application/octet-stream";
+	}
 }
 
 function collectExpectedPaths(gameJson: Record<string, unknown>) {
@@ -258,29 +314,40 @@ async function extractZipEntries(
 	entries: NormalizedEntry[],
 	bucket: Bucket,
 	targetPrefix: string,
-	bucketName: string,
+	cacheControl: string,
 ) {
 	const tasks = entries.map((entry) => async () => {
 		const data = entry.entry.getData();
 		const destination = path.posix.join(targetPrefix, entry.normalizedPath);
-		await bucket.file(destination).save(data, { resumable: false });
+		await bucket.file(destination).save(data, {
+			resumable: false,
+			contentType: detectContentType(entry.normalizedPath),
+			metadata: {
+				cacheControl,
+			},
+		});
 	});
 	await runWithConcurrency(tasks, EXTRACTION_CONCURRENCY, (task) => task());
 
 	// create game-drive.json
-	const gameDriveJson = buildGameDriveJson(entries, targetPrefix);
+	const gameDriveJson = buildGameDriveJson(entries);
 	const gameDriveDest = path.posix.join(targetPrefix, "game-drive.json");
-	await bucket.file(gameDriveDest).save(gameDriveJson, { resumable: false, contentType: "application/json" });
+	await bucket.file(gameDriveDest).save(gameDriveJson, {
+		resumable: false,
+		contentType: "application/json",
+		metadata: {
+			cacheControl,
+		},
+	});
 }
 
 function buildStorageUrl(bucketName: string, objectName: string) {
 	return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(objectName)}?alt=media`;
 }
 
-function buildExtractPrefix(objectName: string) {
-	const dir = path.posix.dirname(objectName);
-	const base = path.posix.basename(objectName);
-	return dir === "." ? base : path.posix.join(dir, base);
+function buildAssetExtractPrefix(objectName: string, contentId: string, pathPrefix: string) {
+	const zipBase = path.posix.basename(objectName).replace(/\.zip$/i, "");
+	return path.posix.join(pathPrefix, contentId, zipBase);
 }
 
 function parseContentIdFromObjectName(objectName: string) {
@@ -302,7 +369,12 @@ function parseContentIdFromObjectName(objectName: string) {
 	return null;
 }
 
-async function processZipFile(bucketName: string, objectName: string, contentRef: DocumentReference) {
+async function processZipFile(
+	bucketName: string,
+	objectName: string,
+	contentId: string,
+	contentRef: DocumentReference,
+) {
 	const app = await getFirebaseApp();
 	const storage = getStorage(app);
 	const bucket = storage.bucket(bucketName);
@@ -313,10 +385,12 @@ async function processZipFile(bucketName: string, objectName: string, contentRef
 		const zip = new AdmZip(data);
 		const { result, entries } = validateZipContents(zip);
 
-		const extractPrefix = buildExtractPrefix(objectName);
+		const assetConfig = await getAssetStorageConfig();
+		const assetBucket = storage.bucket(assetConfig.bucketName);
+		const extractPrefix = buildAssetExtractPrefix(objectName, contentId, assetConfig.pathPrefix);
 		let deletedZip = false;
 		if (result.state === "ok") {
-			await extractZipEntries(entries, bucket, extractPrefix, bucketName);
+			await extractZipEntries(entries, assetBucket, extractPrefix, assetConfig.cacheControl);
 			try {
 				await file.delete();
 				deletedZip = true;
@@ -365,7 +439,7 @@ export async function handleStorageZipFinalize(event: {
 		const contentRef = firestore.collection("contents").doc(contentId);
 		const snapshot = await contentRef.get();
 		if (!snapshot.exists) return;
-		await processZipFile(object.bucket, object.name, contentRef);
+		await processZipFile(object.bucket, object.name, contentId, contentRef);
 		return;
 	}
 
@@ -373,7 +447,7 @@ export async function handleStorageZipFinalize(event: {
 	const snapshot = await firestore.collection("contents").where("zipUrl", "==", zipUrl).limit(1).get();
 	if (snapshot.empty) return;
 	const contentRef = snapshot.docs[0].ref;
-	await processZipFile(object.bucket, object.name, contentRef);
+	await processZipFile(object.bucket, object.name, contentRef.id, contentRef);
 }
 
 function parseGameJsonEntry(gameJsonEntry: NormalizedEntry): Record<string, unknown> {
@@ -385,7 +459,7 @@ function parseGameJsonEntry(gameJsonEntry: NormalizedEntry): Record<string, unkn
 	}
 }
 
-function buildGameDriveJson(entries: NormalizedEntry[], extractPrefix: string): Buffer {
+function buildGameDriveJson(entries: NormalizedEntry[]): Buffer {
 	const gameJsonEntry = entries.find((e) => e.normalizedPath === "game.json");
 	if (!gameJsonEntry) throw new Error(WARNING_GAME_JSON_MISSING);
 
@@ -400,8 +474,6 @@ function buildGameDriveJson(entries: NormalizedEntry[], extractPrefix: string): 
 				if (asset.virtualPath == null) {
 					asset.virtualPath = asset.path;
 				}
-				const fullObjectName = path.posix.join(extractPrefix, asset.path);
-				asset.path = encodeURIComponent(fullObjectName) + "?alt=media";
 			}
 		}
 	}

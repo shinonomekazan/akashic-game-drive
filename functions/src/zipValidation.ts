@@ -346,27 +346,15 @@ function buildStorageUrl(bucketName: string, objectName: string) {
 	return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(objectName)}?alt=media`;
 }
 
-function buildAssetBasePrefix(objectName: string, pathPrefix: string) {
-	const zipBase = path.posix.basename(objectName).replace(/\.zip$/i, "");
-	return path.posix.join(pathPrefix, zipBase);
+function buildAssetBasePrefix(contentId: string, pathPrefix: string) {
+	return path.posix.join(pathPrefix, contentId);
 }
 
-async function resolveDailyExtractPrefix(bucket: Bucket, basePrefix: string, date: string) {
-	const listPrefix = `${basePrefix}/${date}_`;
-	const [files] = await bucket.getFiles({ prefix: listPrefix });
-	const pattern = new RegExp(`^${escapeRegExp(listPrefix)}(\\d{3})(?:/|$)`);
-	const maxSequence = files.reduce((max, file) => {
-		const match = file.name.match(pattern);
-		if (!match) return max;
-		return Math.max(max, Number(match[1]));
-	}, 0);
-
-	for (let sequence = maxSequence + 1; ; sequence++) {
-		const sequenceText = sequence.toString().padStart(3, "0");
-		const extractPrefix = `${basePrefix}/${date}_${sequenceText}`;
-		const [exists] = await bucket.file(path.posix.join(extractPrefix, "game.json")).exists();
-		if (!exists) return extractPrefix;
-	}
+function buildAssetExtractPrefix(contentId: string, pathPrefix: string, date: Date) {
+	const randomSuffix = Math.random().toString(36).slice(2, 8);
+	return `${buildAssetBasePrefix(contentId, pathPrefix)}/${formatAssetDate(date)}_${formatAssetTime(
+		date,
+	)}_${randomSuffix}`;
 }
 
 function formatAssetDate(date: Date) {
@@ -380,8 +368,16 @@ function formatAssetDate(date: Date) {
 	return `${values.year}-${values.month}-${values.day}`;
 }
 
-function escapeRegExp(value: string) {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function formatAssetTime(date: Date) {
+	const parts = new Intl.DateTimeFormat("en", {
+		timeZone: ASSET_DATE_TIME_ZONE,
+		hour: "2-digit",
+		minute: "2-digit",
+		second: "2-digit",
+		hour12: false,
+	}).formatToParts(date);
+	const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+	return `${values.hour}${values.minute}${values.second}${date.getMilliseconds().toString().padStart(3, "0")}`;
 }
 
 async function deleteFileIfExists(file: ReturnType<Bucket["file"]>) {
@@ -434,11 +430,7 @@ async function processZipFile(
 
 		const assetConfig = await getAssetStorageConfig();
 		const assetBucket = storage.bucket(assetConfig.bucketName);
-		const extractPrefix = await resolveDailyExtractPrefix(
-			assetBucket,
-			buildAssetBasePrefix(objectName, assetConfig.pathPrefix),
-			formatAssetDate(new Date()),
-		);
+		const extractPrefix = buildAssetExtractPrefix(contentId, assetConfig.pathPrefix, new Date());
 		let deletedZip = false;
 		if (result.state === "ok") {
 			await extractZipEntries(entries, assetBucket, extractPrefix, assetConfig.cacheControl);

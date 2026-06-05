@@ -90,21 +90,15 @@ async function buildDownloadLinks(
 	contentCdnBaseUrl?: string,
 ): Promise<DownloadLink[]> {
 	const extractedPath = content.extractedPath;
-	const bucket = storage.app.options.storageBucket;
-	if (!extractedPath || (!bucket && !contentCdnBaseUrl)) {
+	if (!extractedPath || (!isDebugMode && !contentCdnBaseUrl) || extractedPath.startsWith("uploads/")) {
 		throw new Error("UNAVAILABLE");
 	}
 	const joinPath = (base: string, relative: string) => `${base.replace(/\/+$/, "")}/${relative.replace(/^\/+/, "")}`;
-	const buildPublicUrl = (objectPath: string) =>
-		`https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
 	const resolveUrl = async (objectPath: string) => {
 		if (isDebugMode) {
 			return getDownloadURL(ref(storage, objectPath));
 		}
-		if (contentCdnBaseUrl && !objectPath.startsWith("uploads/")) {
-			return joinUrl(contentCdnBaseUrl, objectPath);
-		}
-		return buildPublicUrl(objectPath);
+		return joinUrl(contentCdnBaseUrl as string, objectPath);
 	};
 
 	const gameJsonUrl = await resolveUrl(joinPath(extractedPath, "game.json"));

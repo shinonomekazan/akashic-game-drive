@@ -442,8 +442,8 @@ async function processZipFile(
 		let deletedZip = false;
 		if (result.state === "ok") {
 			await extractZipEntries(entries, assetBucket, extractPrefix, assetConfig.cacheControl);
-			deletedZip = await deleteFileIfExists(file);
 		}
+		deletedZip = await deleteFileIfExists(file);
 
 		await contentRef.update(
 			eraseUndefined({

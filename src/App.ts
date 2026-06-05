@@ -1234,7 +1234,7 @@ export class App {
 		const stateLabelHtml = isEdit ? utils.getContentStateLabel(content?.state) : "";
 		const zipName = content?.zipUrl ? utils.getFileNameFromUrl(content.zipUrl) : "";
 		const existingZipLink =
-			isEdit && content?.zipUrl
+			isEdit && content?.zipUrl && content?.state !== "failed"
 				? `<div class="small mt-2">現在のZIP: <a href="${utils.escapeHtml(
 						content.zipUrl,
 					)}" target="_blank" rel="noopener">${utils.escapeHtml(zipName)}</a></div>`
@@ -1547,7 +1547,11 @@ export class App {
 		const createdAt = utils.formatTimestamp(content.createdAt);
 		const updatedAt = utils.formatTimestamp(content.updatedAt);
 		const metaLine = `${ownerLink} が ${createdAt} に投稿 (最終更新: ${updatedAt})`;
-		const canDownload = content.state === "ok" && content.trusted !== false && Boolean(content.extractedPath);
+		const canDownload =
+			content.state === "ok" &&
+			content.trusted !== false &&
+			Boolean(content.extractedPath) &&
+			content.extractedPath?.startsWith("uploads/") !== true;
 		const downloadHtml = canDownload
 			? `<div class="mt-4">
 					<div class="fw-semibold mb-2">ダウンロード</div>

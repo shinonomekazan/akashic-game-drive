@@ -1547,7 +1547,11 @@ export class App {
 		const createdAt = utils.formatTimestamp(content.createdAt);
 		const updatedAt = utils.formatTimestamp(content.updatedAt);
 		const metaLine = `${ownerLink} が ${createdAt} に投稿 (最終更新: ${updatedAt})`;
-		const canDownload = content.state === "ok" && content.trusted !== false && Boolean(content.extractedPath);
+		const canDownload =
+			content.state === "ok" &&
+			content.trusted !== false &&
+			Boolean(content.extractedPath) &&
+			content.extractedPath?.startsWith("uploads/") !== true;
 		const downloadHtml = canDownload
 			? `<div class="mt-4">
 					<div class="fw-semibold mb-2">ダウンロード</div>
@@ -1676,6 +1680,7 @@ export class App {
 					storage: this.firebase.storage,
 					container,
 					isDebugMode: utils.isDebugMode(),
+					contentCdnBaseUrl: this.config.contentCdnBaseUrl,
 					messages: {
 						unavailable: "ダウンロードできません",
 						gameJsonFailed: "game.jsonの取得に失敗しました",

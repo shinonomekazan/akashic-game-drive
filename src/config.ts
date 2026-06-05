@@ -8,6 +8,7 @@ const fallbackEnv = {
 	FIREBASE_MESSAGING_SENDER_ID: "74790524710",
 	FIREBASE_APP_ID: "1:74790524710:web:8e19cae4759d77d56fd3e7",
 	FIREBASE_MEASUREMENT_ID: "G-HHV36QKTGK",
+	CONTENT_CDN_BASE_URL: "https://drive.akashic.shinonomekazan.com",
 };
 
 function resolveEnv(key: keyof typeof fallbackEnv): string {
@@ -36,6 +37,7 @@ export function configure(): AppConfig {
 			emulatorBaseUrl: `http://127.0.0.1:5001/${projectId}/${functionsRegion}/api`,
 			apiKey: "4a426214-1351-4d65-94fd-cf0e6323a702",
 		},
+		contentCdnBaseUrl: resolveEnv("CONTENT_CDN_BASE_URL"),
 	};
 }
 

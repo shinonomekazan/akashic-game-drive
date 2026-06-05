@@ -17,4 +17,5 @@ export interface ApiConfig {
 export interface AppConfig {
 	firebaseConfig: FirebaseConfig;
 	apiConfig: ApiConfig;
+	contentCdnBaseUrl?: string;
 }

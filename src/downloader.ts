@@ -13,6 +13,7 @@ interface DownloadOptions {
 	storage: FirebaseStorage;
 	container: HTMLElement;
 	isDebugMode: boolean;
+	contentCdnBaseUrl?: string;
 	messages: DownloadMessages;
 }
 
@@ -72,24 +73,32 @@ function collectDownloadPaths(gameJson: Record<string, unknown>) {
 	return [...paths].sort();
 }
 
+function joinUrl(baseUrl: string, objectPath: string) {
+	const normalizedBase = baseUrl.replace(/\/+$/, "");
+	const encodedPath = objectPath
+		.replace(/^\/+/, "")
+		.split("/")
+		.map((segment) => encodeURIComponent(segment))
+		.join("/");
+	return `${normalizedBase}/${encodedPath}`;
+}
+
 async function buildDownloadLinks(
 	content: ContentRecord,
 	storage: FirebaseStorage,
 	isDebugMode: boolean,
+	contentCdnBaseUrl?: string,
 ): Promise<DownloadLink[]> {
 	const extractedPath = content.extractedPath;
-	const bucket = storage.app.options.storageBucket;
-	if (!extractedPath || !bucket) {
+	if (!extractedPath || (!isDebugMode && !contentCdnBaseUrl) || extractedPath.startsWith("uploads/")) {
 		throw new Error("UNAVAILABLE");
 	}
 	const joinPath = (base: string, relative: string) => `${base.replace(/\/+$/, "")}/${relative.replace(/^\/+/, "")}`;
-	const buildPublicUrl = (objectPath: string) =>
-		`https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
 	const resolveUrl = async (objectPath: string) => {
 		if (isDebugMode) {
 			return getDownloadURL(ref(storage, objectPath));
 		}
-		return buildPublicUrl(objectPath);
+		return joinUrl(contentCdnBaseUrl as string, objectPath);
 	};
 
 	const gameJsonUrl = await resolveUrl(joinPath(extractedPath, "game.json"));
@@ -115,10 +124,11 @@ export async function loadContentFiles({
 	storage,
 	container,
 	isDebugMode,
+	contentCdnBaseUrl,
 	messages,
 }: DownloadOptions): Promise<void> {
 	try {
-		const links = await buildDownloadLinks(content, storage, isDebugMode);
+		const links = await buildDownloadLinks(content, storage, isDebugMode, contentCdnBaseUrl);
 		const handleDownload = async (event: Event) => {
 			const target = event.target as HTMLElement | null;
 			const linkEl = target?.closest<HTMLAnchorElement>("a[data-file]");

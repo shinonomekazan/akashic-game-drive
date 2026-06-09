@@ -48,7 +48,6 @@ interface ContentJson {
 	engine_urls: string[];
 	content_url: string;
 	external: string[];
-	content_id: string;
 }
 
 const RUNTIME_CONFIGURATIONS: Record<string, string[]> = {
@@ -365,7 +364,7 @@ async function extractZipEntries(
 
 	const gameJsonEntry = entries.find((e) => e.normalizedPath === "game.json");
 	if (!gameJsonEntry) throw new Error(WARNING_GAME_JSON_MISSING);
-	const contentJson = buildContentJson(contentId, parseGameJsonEntry(gameJsonEntry), targetPrefix, config);
+	const contentJson = buildContentJson(parseGameJsonEntry(gameJsonEntry), targetPrefix, config);
 	const contentJsonDest = path.posix.join(targetPrefix, "content.json");
 	await bucket.file(contentJsonDest).save(Buffer.from(JSON.stringify(contentJson, null, "\t"), "utf8"), {
 		resumable: false,
@@ -417,7 +416,6 @@ function collectExternalPluginNames(gameJson: Record<string, unknown>) {
 }
 
 function buildContentJson(
-	contentId: string,
 	gameJson: Record<string, unknown>,
 	targetPrefix: string,
 	config: AssetStorageConfig,
@@ -434,7 +432,6 @@ function buildContentJson(
 		),
 		content_url: joinPublicUrl(config.publicBaseUrl, targetPrefix, "game.json"),
 		external: collectExternalPluginNames(gameJson),
-		content_id: contentId,
 	};
 }
 

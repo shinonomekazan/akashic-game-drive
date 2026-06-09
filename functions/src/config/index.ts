@@ -8,5 +8,7 @@ export interface AppConfig extends fw.AppConfig {
 	storageBucket: string;
 	assetStorageBucket: string;
 	assetPathPrefix: string;
+	assetPublicBaseUrl: string;
 	assetCacheControl: string;
+	runtimePathPrefix: string;
 }

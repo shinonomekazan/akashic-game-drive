@@ -21,7 +21,9 @@ const ASSET_DATE_TIME_ZONE = "Asia/Tokyo";
 interface AssetStorageConfig {
 	bucketName: string;
 	pathPrefix: string;
+	publicBaseUrl: string;
 	cacheControl: string;
+	runtimePathPrefix: string;
 }
 
 interface ZipEntry {
@@ -40,6 +42,21 @@ interface ValidationResult {
 	warnings: string[];
 	trusted?: boolean;
 }
+
+interface ContentJson {
+	engine_configuration_version: string;
+	engine_urls: string[];
+	content_url: string;
+	external: string[];
+}
+
+const RUNTIME_CONFIGURATIONS: Record<string, string[]> = {
+	"1.4.0-0": ["engineFilesV1_4_0.js", "playlogClientV7_3_1.js"],
+	"2.4.0-0": ["engineFilesV2_4_0.js", "playlogClientV7_3_1.js"],
+	"2.4.0-0-canvas": ["engineFilesV2_4_0_Canvas.js", "playlogClientV7_3_1.js"],
+	"3.13.4-0": ["engineFilesV3_13_4.js", "playlogClientV7_3_1.js"],
+	"3.13.4-0-canvas": ["engineFilesV3_13_4_Canvas.js", "playlogClientV7_3_1.js"],
+};
 
 function isZipObject(objectName: string, contentType?: string | null) {
 	const lowerName = objectName.toLowerCase();
@@ -76,7 +93,9 @@ async function getAssetStorageConfig(): Promise<AssetStorageConfig> {
 	return {
 		bucketName: config.app.assetStorageBucket,
 		pathPrefix: config.app.assetPathPrefix.replace(/^\/+|\/+$/g, "") || "contents",
+		publicBaseUrl: config.app.assetPublicBaseUrl.replace(/\/+$/g, ""),
 		cacheControl: config.app.assetCacheControl,
+		runtimePathPrefix: config.app.runtimePathPrefix.replace(/^\/+|\/+$/g, "") || "runtime",
 	};
 }
 
@@ -315,6 +334,8 @@ async function extractZipEntries(
 	entries: NormalizedEntry[],
 	bucket: Bucket,
 	targetPrefix: string,
+	contentId: string,
+	config: AssetStorageConfig,
 	cacheControl: string,
 ) {
 	const tasks = entries.map((entry) => async () => {
@@ -340,10 +361,78 @@ async function extractZipEntries(
 			cacheControl,
 		},
 	});
+
+	const gameJsonEntry = entries.find((e) => e.normalizedPath === "game.json");
+	if (!gameJsonEntry) throw new Error(WARNING_GAME_JSON_MISSING);
+	const contentJson = buildContentJson(parseGameJsonEntry(gameJsonEntry), targetPrefix, config);
+	const contentJsonDest = path.posix.join(targetPrefix, "content.json");
+	await bucket.file(contentJsonDest).save(Buffer.from(JSON.stringify(contentJson, null, "\t"), "utf8"), {
+		resumable: false,
+		contentType: "application/json",
+		metadata: {
+			cacheControl,
+		},
+	});
 }
 
 function buildStorageUrl(bucketName: string, objectName: string) {
 	return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(objectName)}?alt=media`;
+}
+
+function joinPublicUrl(baseUrl: string, ...paths: string[]) {
+	const normalizedBase = baseUrl.replace(/\/+$/g, "");
+	const encodedPath = paths
+		.join("/")
+		.replace(/^\/+/g, "")
+		.split("/")
+		.filter(Boolean)
+		.map((segment) => encodeURIComponent(segment))
+		.join("/");
+	return `${normalizedBase}/${encodedPath}`;
+}
+
+function selectRuntimeConfigurationVersion(gameJson: Record<string, unknown>) {
+	const environment = gameJson.environment as Record<string, unknown> | undefined;
+	const runtime = environment?.["akashic-runtime"] as Record<string, unknown> | undefined;
+	const version = typeof runtime?.version === "string" ? runtime.version : "";
+	const flavor = typeof runtime?.flavor === "string" ? runtime.flavor : "";
+	const major = Number(version.match(/\d+/)?.[0] ?? 3);
+
+	if (major <= 1) return "1.4.0-0";
+	if (major === 2) return flavor === "-canvas" ? "2.4.0-0-canvas" : "2.4.0-0";
+	return flavor === "-canvas" ? "3.13.4-0-canvas" : "3.13.4-0";
+}
+
+function collectExternalPluginNames(gameJson: Record<string, unknown>) {
+	const environment = gameJson.environment as Record<string, unknown> | undefined;
+	const external = environment?.external;
+	if (Array.isArray(external)) {
+		return external.filter((name): name is string => typeof name === "string" && name.length > 0);
+	}
+	if (external && typeof external === "object") {
+		return Object.keys(external);
+	}
+	return [];
+}
+
+function buildContentJson(
+	gameJson: Record<string, unknown>,
+	targetPrefix: string,
+	config: AssetStorageConfig,
+): ContentJson {
+	const engineConfigurationVersion = selectRuntimeConfigurationVersion(gameJson);
+	const runtimeFiles = RUNTIME_CONFIGURATIONS[engineConfigurationVersion];
+	if (!runtimeFiles) {
+		throw new Error(`Unsupported runtime: ${engineConfigurationVersion}`);
+	}
+	return {
+		engine_configuration_version: engineConfigurationVersion,
+		engine_urls: runtimeFiles.map((fileName) =>
+			joinPublicUrl(config.publicBaseUrl, config.runtimePathPrefix, engineConfigurationVersion, fileName),
+		),
+		content_url: joinPublicUrl(config.publicBaseUrl, targetPrefix, "game.json"),
+		external: collectExternalPluginNames(gameJson),
+	};
 }
 
 function buildAssetBasePrefix(contentId: string, pathPrefix: string) {
@@ -433,7 +522,14 @@ async function processZipFile(
 		const extractPrefix = buildAssetExtractPrefix(contentId, assetConfig.pathPrefix, new Date());
 		let deletedZip = false;
 		if (result.state === "ok") {
-			await extractZipEntries(entries, assetBucket, extractPrefix, assetConfig.cacheControl);
+			await extractZipEntries(
+				entries,
+				assetBucket,
+				extractPrefix,
+				contentId,
+				assetConfig,
+				assetConfig.cacheControl,
+			);
 		}
 		deletedZip = await deleteFileIfExists(file);
 
@@ -443,6 +539,7 @@ async function processZipFile(
 				warnings: result.warnings,
 				trusted: result.trusted,
 				extractedPath: result.state === "ok" ? extractPrefix : null,
+				contentJsonPath: result.state === "ok" ? path.posix.join(extractPrefix, "content.json") : null,
 				zipUrl: deletedZip ? null : undefined,
 			}),
 		);
@@ -452,6 +549,7 @@ async function processZipFile(
 				state: "failed",
 				warnings: [WARNING_INVALID_FILE_LIST],
 				extractedPath: null,
+				contentJsonPath: null,
 			}),
 		);
 		throw error;

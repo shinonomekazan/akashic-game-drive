@@ -7,6 +7,7 @@
 		"shell": "npm run build && firebase functions:shell",
 		"start": "cross-env DOTENV_CONFIG_PATH=./.env.local node lib/start.js",
 		"format": "prettier --write .",
+		"upload:akashic-runtime": "ts-node scripts/uploadAkashicRuntime.ts",
 		"deploy": "firebase deploy --only functions",
 		"logs": "firebase functions:log"
 	},

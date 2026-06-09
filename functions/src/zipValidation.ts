@@ -334,7 +334,6 @@ async function extractZipEntries(
 	entries: NormalizedEntry[],
 	bucket: Bucket,
 	targetPrefix: string,
-	contentId: string,
 	config: AssetStorageConfig,
 	cacheControl: string,
 ) {
@@ -423,7 +422,7 @@ function buildContentJson(
 	const engineConfigurationVersion = selectRuntimeConfigurationVersion(gameJson);
 	const runtimeFiles = RUNTIME_CONFIGURATIONS[engineConfigurationVersion];
 	if (!runtimeFiles) {
-		throw new Error(`Unsupported runtime: ${engineConfigurationVersion}`);
+		throw new Error(`未対応のランタイムです: ${engineConfigurationVersion}`);
 	}
 	return {
 		engine_configuration_version: engineConfigurationVersion,
@@ -522,14 +521,7 @@ async function processZipFile(
 		const extractPrefix = buildAssetExtractPrefix(contentId, assetConfig.pathPrefix, new Date());
 		let deletedZip = false;
 		if (result.state === "ok") {
-			await extractZipEntries(
-				entries,
-				assetBucket,
-				extractPrefix,
-				contentId,
-				assetConfig,
-				assetConfig.cacheControl,
-			);
+			await extractZipEntries(entries, assetBucket, extractPrefix, assetConfig, assetConfig.cacheControl);
 		}
 		deletedZip = await deleteFileIfExists(file);
 

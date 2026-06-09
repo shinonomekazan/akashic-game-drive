@@ -63,7 +63,7 @@ function download(url: string, destination: string): Promise<void> {
 			const location = response.headers.location;
 			if (status >= 300 && status < 400 && location) {
 				response.resume();
-				download(location, destination).then(resolve, reject);
+				download(new URL(location, url).toString(), destination).then(resolve, reject);
 				return;
 			}
 			if (status < 200 || status >= 300) {

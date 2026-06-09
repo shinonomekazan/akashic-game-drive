@@ -17,7 +17,6 @@ import { createContent, createContentUploadUrl, getContentById, listMyContents, 
 import { createFeedback, createUser, getUserById, listUserContents } from "./api/users";
 import { loadContentFiles } from "./downloader";
 import { createReport } from "./api/reports";
-import { Controller } from "./game";
 
 export class App {
 	firebase: FirebaseInstance;
@@ -910,7 +909,7 @@ export class App {
 		}
 
 		this.setContent(`<div id="contentContainer" class="w-100"></div>`);
-		this.renderGameScreen(contentId);
+		this.renderGameScreen(content.contentJsonPath);
 	}
 
 	async loadUserProfile() {
@@ -2175,16 +2174,37 @@ export class App {
 		this.bindMyActions();
 	}
 
-	renderGameScreen(contentId: string) {
+	renderGameScreen(contentPath: string) {
 		const container = utils.qsStrict<HTMLDivElement>("#contentContainer");
 		const playerId = "dummy";
-		const controller = new Controller(playerId);
-		controller.generateAgv(container, 1280, 720);
-
 		const userId = this.state.user?.uid ?? "";
+		const contentUrl = `https://drive.akashic.shinonomekazan.com/${contentPath}`; //content.jsonはゲームのサーバ保存時に作る必要あり
+		const agv = (window as any).require("@akashic/akashic-gameview-web");
+		const gameview = new agv.AkashicGameView({
+			container: container,
+			width: 1280, // 最大 (かつデフォルト) のゲーム画面幅
+			height: 720, // 最大 (かつデフォルト) のゲーム画面高さ
+		});
 
-		const url = `https://firebasestorage.googleapis.com/v0/b/akashic-game-drive.firebasestorage.app/o/uploads%2F${userId}%2Fcontents%2Fzip%2F${contentId}%2Fcontent.json?alt=media`; //content.jsonはゲームのサーバ保存時に作る必要あり
-		controller.start(url);
+		// content.json (ここでは akashic serve が実行中に提供するもの) を指定してゲームコンテンツを作成。
+		const gameContent = new agv.GameContent({
+			contentUrl: contentUrl,
+			player: {
+			id: "user1",
+			},
+			playConfig: {
+			playId: "dummy_play_id",
+			executionMode: agv.ExecutionMode.Active
+			}
+		});
+
+		// エラーハンドラを設定
+		gameContent.addErrorListener({
+			onError: function (e: any) { console.log(e, e.cause); }
+		});
+
+		// GameView にコンテンツを配置 (して実行開始)
+		gameview.addContent(gameContent);
 	}
 
 	bindMyActions() {

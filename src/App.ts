@@ -2190,17 +2190,19 @@ export class App {
 		const gameContent = new agv.GameContent({
 			contentUrl: contentUrl,
 			player: {
-			id: "user1",
+				id: "user1",
 			},
 			playConfig: {
-			playId: "dummy_play_id",
-			executionMode: agv.ExecutionMode.Active
-			}
+				playId: "dummy_play_id",
+				executionMode: agv.ExecutionMode.Active,
+			},
 		});
 
 		// エラーハンドラを設定
 		gameContent.addErrorListener({
-			onError: function (e: any) { console.log(e, e.cause); }
+			onError: function (e: any) {
+				console.log(e, e.cause);
+			},
 		});
 
 		// GameView にコンテンツを配置 (して実行開始)

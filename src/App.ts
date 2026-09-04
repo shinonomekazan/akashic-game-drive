@@ -909,7 +909,7 @@ export class App {
 		}
 
 		this.setContent(`<div id="contentContainer" class="w-100"></div>`);
-		this.renderGameScreen(content.contentJsonPath);
+		this.renderGameScreen(content.contentJsonPath ?? "");
 	}
 
 	async loadUserProfile() {

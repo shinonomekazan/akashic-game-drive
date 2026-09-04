@@ -18,6 +18,7 @@ export interface ContentRecord {
 	zipUrl?: string | null;
 	thumbnailUrl?: string;
 	extractedPath?: string | null;
+	contentJsonPath?: string | null;
 	state?: "ok" | "failed";
 	warnings?: string[];
 	trusted?: boolean;

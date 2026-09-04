@@ -13,6 +13,7 @@
 		"deploy:storage": "firebase deploy --only storage"
 	},
 	"dependencies": {
+		"@akashic/agvw": "^1.0.7",
 		"firebase": "^11.7.1"
 	},
 	"devDependencies": {

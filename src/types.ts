@@ -45,6 +45,7 @@ export type Route =
 	| { name: "my-myFeedbacks" }
 	| { name: "content-view"; contentId: string }
 	| { name: "content-edit"; contentId: string }
+	| { name: "content-play"; contentId: string }
 	| { name: "user"; userId: string };
 
 export interface AppState {

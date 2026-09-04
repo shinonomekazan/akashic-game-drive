@@ -14,7 +14,7 @@ export interface ContentRecord {
 	ownerId: string;
 	title: string;
 	description?: string;
-	contentJsonPath?: string;
+	contentJsonPath: string | null | undefined;
 	zipUrl?: string | null;
 	thumbnailUrl?: string;
 	extractedPath?: string | null;

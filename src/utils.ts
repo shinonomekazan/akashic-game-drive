@@ -86,6 +86,10 @@ export function parseRoute(): Route {
 	if (contentViewMatch) {
 		return { name: "content-view", contentId: decodeURIComponent(contentViewMatch[1]) };
 	}
+	const contentPlayMatch = path.match(/^\/contents\/([^/]+)\/play\/?$/);
+	if (contentPlayMatch) {
+		return { name: "content-play", contentId: decodeURIComponent(contentPlayMatch[1]) };
+	}
 	if (path.startsWith("/my/contents")) {
 		return { name: "my-contents" };
 	}

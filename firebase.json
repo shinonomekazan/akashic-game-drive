@@ -28,10 +28,6 @@
 		"ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
 		"rewrites": [
 			{
-				"source": "/js/agvw.js",
-				"destination": "/js/agvw.js"
-			},
-			{
 				"source": "/login",
 				"destination": "/index.html"
 			},

@@ -2181,9 +2181,8 @@ export class App {
 
 	renderGameScreen(contentPath: string) {
 		const container = utils.qsStrict<HTMLDivElement>("#contentContainer");
-		const playerId = "dummy";
-		const userId = this.state.user?.uid ?? "";
-		const contentUrl = `https://drive.akashic.shinonomekazan.com/${contentPath}`; //content.jsonはゲームのサーバ保存時に作る必要あり
+		const playerId = this.state.user?.uid ?? "";
+		const contentUrl = `https://drive.akashic.shinonomekazan.com/${contentPath}`;
 		const agv = (window as any).require("@akashic/akashic-gameview-web");
 		const gameview = new agv.AkashicGameView({
 			container: container,
@@ -2195,10 +2194,10 @@ export class App {
 		const gameContent = new agv.GameContent({
 			contentUrl: contentUrl,
 			player: {
-				id: "user1",
+				id: playerId,
 			},
 			playConfig: {
-				playId: "dummy_play_id",
+				playId: playerId,
 				executionMode: agv.ExecutionMode.Active,
 			},
 		});

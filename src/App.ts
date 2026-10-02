@@ -902,14 +902,14 @@ export class App {
 		const route = this.state.route;
 		const contentId = route.name === "content-play" ? route.contentId : "";
 		const content = this.state.contents.find((item) => item.id === contentId);
-		if (!content) {
+		if (!content || content.state !== "ok" || content.contentJsonPath == null) {
 			this.showToast("コンテンツが見つかりません", "error");
 			utils.navigateTo("/my");
 			return;
 		}
 
 		this.setContent(`<div id="contentContainer" class="w-100"></div>`);
-		this.renderGameScreen(content.contentJsonPath ?? "");
+		this.renderGameScreen(content.contentJsonPath);
 	}
 
 	async loadUserProfile() {
@@ -2183,14 +2183,14 @@ export class App {
 		const container = utils.qsStrict<HTMLDivElement>("#contentContainer");
 		const playerId = this.state.user?.uid ?? "";
 		const contentUrl = `https://drive.akashic.shinonomekazan.com/${contentPath}`;
-		const agv = (window as any).require("@akashic/akashic-gameview-web");
+		const agv = window.require("@akashic/akashic-gameview-web");
 		const gameview = new agv.AkashicGameView({
 			container: container,
 			width: 1280, // 最大 (かつデフォルト) のゲーム画面幅
 			height: 720, // 最大 (かつデフォルト) のゲーム画面高さ
 		});
 
-		// content.json (ここでは akashic serve が実行中に提供するもの) を指定してゲームコンテンツを作成。
+		//サーバーに配置されたcontent.json を指定してゲームコンテンツを作成。
 		const gameContent = new agv.GameContent({
 			contentUrl: contentUrl,
 			player: {
@@ -2206,6 +2206,7 @@ export class App {
 		gameContent.addErrorListener({
 			onError: function (e: any) {
 				console.log(e, e.cause);
+				alert("ゲームの読み込みに失敗しました");
 			},
 		});
 

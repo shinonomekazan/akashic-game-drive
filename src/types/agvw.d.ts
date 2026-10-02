@@ -13,9 +13,9 @@ interface AkashicGameViewParameterObject {
 interface PlayConfig {
 	playId: string; //ゲームプレイを識別する値 (g.game.playId に反映)
 	executionMode: Agv.ExecutionMode; //実行モード
-	/*playlogServerUrl?: string; //マルチプレイの通信路サーバの URL
+	playlogServerUrl?: string; //マルチプレイの通信路サーバの URL
 	playToken?: string; //マルチプレイの通信路サーバに引き渡すトークン
-	replayData?: //リプレイ情報
+	/*replayData?: //リプレイ情報
 	replayTargetTime?:*/ //リプレイ再生時、再生時刻 (ゲーム開始からの経過ミリ秒) を得るために呼び出されるコールバック関数
 }
 

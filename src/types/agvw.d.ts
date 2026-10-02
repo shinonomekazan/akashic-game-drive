@@ -21,7 +21,7 @@ interface PlayConfig {
 
 interface GameConfig {
 	contentUrl: string;
-	player: {id: string};
+	player: { id: string };
 	playConfig: PlayConfig;
 	/*contentArea?:
 	initialEvents?:
@@ -51,7 +51,7 @@ declare class AkashicGameView {
 declare class GameContent {
 	constructor(param: GameConfig);
 
-	addErrorListener(ErrorListener)	//発生したエラーを通知するリスナを指定する。
+	addErrorListener(ErrorListener); //発生したエラーを通知するリスナを指定する。
 	/*addContentLoadListener(ContentLoadListener)	コンテンツの実行開始を通知するリスナを指定する。
 	setContentArea(ContentArea)	コンテンツの表示領域を設定する。
 	getContentArea()	コンテンツの表示領域を取得する。
@@ -78,9 +78,9 @@ declare class GameContent {
 }
 
 declare global {
-    interface Window {
-        require(moduleName: "@akashic/akashic-gameview-web") : Agv;
-    }
+	interface Window {
+		require(moduleName: "@akashic/akashic-gameview-web"): Agv;
+	}
 }
 
-export {}
+export {};

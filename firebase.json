@@ -56,6 +56,10 @@
 				"destination": "/index.html"
 			},
 			{
+				"source": "/contents/*/play",
+				"destination": "/index.html"
+			},
+			{
 				"source": "/users/*",
 				"destination": "/index.html"
 			},

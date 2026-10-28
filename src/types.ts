@@ -46,7 +46,8 @@ export type Route =
 	| { name: "content-view"; contentId: string }
 	| { name: "content-edit"; contentId: string }
 	| { name: "content-play"; contentId: string }
-	| { name: "user"; userId: string };
+	| { name: "user"; userId: string }
+	| { name: "search" };
 
 export interface AppState {
 	route: Route;
@@ -84,6 +85,9 @@ export interface AppState {
 	myFeedbackDisplayCount: number;
 	mySentFeedbackDisplayCount: number;
 	refreshMyFeedbacks: boolean;
+	searchQuery: string | null;
+	searchResults: ContentRecord[];
+	searchLoading: boolean;
 }
 
 export interface ManageUser {

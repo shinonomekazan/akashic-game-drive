@@ -54,3 +54,10 @@ export async function createContentUploadUrl(client: Client, input: CreateConten
 		JSON.stringify(input),
 	);
 }
+
+export async function searchContents(client: Client, query: string) {
+	return client.call<{ contents: ContentRecord[] }>(
+		"GET",
+		`/contents/searchContent?query=${encodeURIComponent(query)}`,
+	);
+}

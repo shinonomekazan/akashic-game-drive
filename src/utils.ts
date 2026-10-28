@@ -105,6 +105,9 @@ export function parseRoute(): Route {
 	if (path.startsWith("/my")) {
 		return { name: "my" };
 	}
+	if (path.startsWith("/search")) {
+		return { name: "search" };
+	}
 	return { name: "top" };
 }
 

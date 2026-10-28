@@ -13,7 +13,14 @@ import { connectFirestoreEmulator } from "firebase/firestore";
 import { connectStorageEmulator, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Client } from "./api/client";
 import type { UpdateContentInput } from "./api/contents";
-import { createContent, createContentUploadUrl, getContentById, listMyContents, updateContent } from "./api/contents";
+import {
+	createContent,
+	createContentUploadUrl,
+	getContentById,
+	listMyContents,
+	searchContents,
+	updateContent,
+} from "./api/contents";
 import { createFeedback, createUser, getUserById, listUserContents } from "./api/users";
 import { loadContentFiles } from "./downloader";
 import { createReport } from "./api/reports";
@@ -71,6 +78,9 @@ export class App {
 			myFeedbackDisplayCount: 10,
 			mySentFeedbackDisplayCount: 10,
 			refreshMyFeedbacks: false,
+			searchQuery: null,
+			searchResults: [],
+			searchLoading: false,
 		};
 		this.connectEmulatorIfDebug();
 	}
@@ -114,6 +124,9 @@ export class App {
 				myFeedbackDisplayCount: 10,
 				mySentFeedbackDisplayCount: 10,
 				refreshMyFeedbacks: false,
+				searchQuery: null,
+				searchResults: [],
+				searchLoading: false,
 			};
 			await this.render();
 		});
@@ -215,6 +228,9 @@ export class App {
 				break;
 			case "user":
 				await this.renderUserPage();
+				break;
+			case "search":
+				await this.renderSearchPage();
 				break;
 			case "top":
 			default:
@@ -707,6 +723,48 @@ export class App {
 		});
 	}
 
+	async renderSearchPage() {
+		const signedIn = this.state.user !== null;
+		if (!signedIn) {
+			utils.navigateTo("/login");
+			return;
+		}
+
+		if (this.state.profileLoading) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			return;
+		}
+
+		if (!this.state.profileLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadUserProfile();
+			await this.render();
+			return;
+		}
+
+		if (this.state.needsProfile) {
+			this.renderProfileSetup();
+			return;
+		}
+
+		const urlParams = new URLSearchParams(window.location.search);
+		const query = urlParams.get("query") ?? "";
+
+		if (this.state.searchLoading) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			return;
+		}
+
+		if (this.state.searchQuery !== query) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadSearchResults(query);
+			await this.render();
+			return;
+		}
+
+		this.renderSearchResult(query, this.state.searchResults);
+	}
+
 	async renderMyEdit() {
 		const signedIn = this.state.user !== null;
 		if (!signedIn) {
@@ -1133,6 +1191,32 @@ export class App {
 				...this.state,
 				userPageContentsLoaded: true,
 				userPageContentsLoading: false,
+			};
+			this.showToast((err as Error).message || "コンテンツの取得に失敗しました", "error");
+		}
+	}
+
+	async loadSearchResults(query: string) {
+		if (this.state.searchLoading) {
+			return;
+		}
+		this.state = { ...this.state, searchLoading: true };
+		try {
+			const response = await searchContents(this.apiClient, query);
+			const contents = response.data.contents ?? [];
+			utils.sortContentsByCreatedAt(contents);
+			this.state = {
+				...this.state,
+				searchQuery: query,
+				searchResults: contents,
+				searchLoading: false,
+			};
+		} catch (err) {
+			this.state = {
+				...this.state,
+				searchQuery: query,
+				searchResults: [],
+				searchLoading: false,
 			};
 			this.showToast((err as Error).message || "コンテンツの取得に失敗しました", "error");
 		}
@@ -2045,51 +2129,7 @@ export class App {
 					<div class="d-grid gap-3">
 						${contents
 							.map((content) => {
-								const title = utils.escapeHtml(content.title);
-								const description = content.description
-									? `<div class="text-secondary small mt-1">${utils.escapeHtml(content.description)}</div>`
-									: "";
-								const stateLabel = utils.getStateListContentLabel(content.state);
-								const stateLabelHtml = stateLabel;
-								const contentLink = `/contents/${encodeURIComponent(content.id)}`;
-								const titleLink = `<a class="text-decoration-none text-reset js-content-link" href="${utils.escapeHtml(
-									contentLink,
-								)}" data-content-id="${utils.escapeHtml(content.id)}">${title}</a>`;
-								const contentCreatedAt = utils.formatTimestamp(content.createdAt);
-								const thumbnail = content.thumbnailUrl
-									? `<img class="agd-thumb-sm rounded" src="${utils.escapeHtml(content.thumbnailUrl)}" alt="${title}" />`
-									: `<div class="agd-thumb-sm rounded bg-light d-flex align-items-center justify-content-center text-secondary">-</div>`;
-								const thumbLink = `<a class="js-content-link" href="${utils.escapeHtml(
-									contentLink,
-								)}" data-content-id="${utils.escapeHtml(content.id)}">${thumbnail}</a>`;
-								const editButton = allowEdit
-									? `<button class="btn btn-sm btn-outline-secondary js-edit-content" type="button" data-content-id="${utils.escapeHtml(
-											content.id,
-										)}">編集</button>`
-									: "";
-								const executionButton =
-									content.state === "ok"
-										? `<button class="btn btn-sm btn-outline-secondary js-execution-content" type="button" data-content-id="${utils.escapeHtml(
-												content.id,
-											)}">実行</button>`
-										: "";
-								return `
-									<div class="card shadow-sm">
-										<div class="card-body">
-											<div class="d-flex gap-3 align-items-start">
-												${thumbLink}
-												<div class="flex-grow-1">
-													<div class="fw-semibold">${titleLink}</div>
-													<div class="text-secondary small">作成日: ${contentCreatedAt}</div>
-													${description}
-													<div class="mt-1">${stateLabelHtml}</div>
-												</div>
-												${editButton}
-												${executionButton}
-											</div>
-										</div>
-									</div>
-								`;
+								return this.buildContentCardHtml(content, allowEdit);
 							})
 							.join("")}
 					</div>
@@ -2179,6 +2219,37 @@ export class App {
 		this.bindMyActions();
 	}
 
+	renderSearchResult(query: string, contents: ContentRecord[]) {
+		const resultHtml =
+			contents.length === 0
+				? '<div class="agd-empty">該当するコンテンツはありません。</div>'
+				: `
+			<div class="d-grid gap-3">
+				${contents
+					.map((content) => {
+						return this.buildContentCardHtml(content, false);
+					})
+					.join("")}
+			</div>
+		`;
+
+		this.setContent(`
+			<form id="search-form">
+				<input type="search" name="query" value="${utils.escapeHtml(query)}" id="search-input" class="w-75 form-control" style="max-width: 600px;" >
+				<button type="submit" class="btn btn-primary">検索</button>
+			</form>
+			<div class="card shadow-sm">
+				<div class="card-body">
+					<div class="d-flex align-items-center justify-content-between mb-3">
+						<h2 class="h6 mb-0">検索結果</h2>
+					</div>
+					${resultHtml}
+				</div>
+			</div>
+		`);
+		this.bindMyActions();
+	}
+
 	renderGameScreen(contentPath: string) {
 		const container = utils.qsStrict<HTMLDivElement>("#contentContainer");
 		const playerId = this.state.user?.uid ?? "";
@@ -2237,6 +2308,16 @@ export class App {
 			});
 		}
 
+		const searchForm = utils.qs<HTMLFormElement>("#search-form");
+		const searchInput = utils.qs<HTMLInputElement>("#search-input");
+		if (searchForm) {
+			searchForm.addEventListener("submit", (event) => {
+				event.preventDefault();
+				const param = new URLSearchParams({ query: searchInput?.value ?? "" });
+				utils.navigateTo(`/search?${param}`);
+			});
+		}
+
 		const viewProfileBtn = utils.qs<HTMLAnchorElement>("#view-profile");
 		if (viewProfileBtn) {
 			viewProfileBtn.addEventListener("click", (event) => {
@@ -2278,8 +2359,8 @@ export class App {
 			});
 		});
 
-		const executionButtons = utils.qsStrictAll<HTMLButtonElement>(this.rootEl, ".js-execution-content");
-		executionButtons.forEach((button) => {
+		const contentExecutionButtons = utils.qsStrictAll<HTMLButtonElement>(this.rootEl, ".js-execution-content");
+		contentExecutionButtons.forEach((button) => {
 			const contentId = button.dataset.contentId;
 			if (!contentId) return;
 			button.addEventListener("click", () => {
@@ -2437,5 +2518,53 @@ export class App {
 		setTimeout(() => {
 			this.toastEl.style.opacity = "0";
 		}, 3200);
+	}
+
+	buildContentCardHtml(content: ContentRecord, allowEdit: boolean): string {
+		const title = utils.escapeHtml(content.title);
+		const description = content.description
+			? `<div class="text-secondary small mt-1">${utils.escapeHtml(content.description)}</div>`
+			: "";
+		const stateLabel = utils.getStateListContentLabel(content.state);
+		const stateLabelHtml = stateLabel;
+		const contentLink = `/contents/${encodeURIComponent(content.id)}`;
+		const titleLink = `<a class="text-decoration-none text-reset js-content-link" href="${utils.escapeHtml(
+			contentLink,
+		)}" data-content-id="${utils.escapeHtml(content.id)}">${title}</a>`;
+		const contentCreatedAt = utils.formatTimestamp(content.createdAt);
+		const thumbnail = content.thumbnailUrl
+			? `<img class="agd-thumb-sm rounded" src="${utils.escapeHtml(content.thumbnailUrl)}" alt="${title}" />`
+			: `<div class="agd-thumb-sm rounded bg-light d-flex align-items-center justify-content-center text-secondary">-</div>`;
+		const thumbLink = `<a class="js-content-link" href="${utils.escapeHtml(
+			contentLink,
+		)}" data-content-id="${utils.escapeHtml(content.id)}">${thumbnail}</a>`;
+		const editButton = allowEdit
+			? `<button class="btn btn-sm btn-outline-secondary js-edit-content" type="button" data-content-id="${utils.escapeHtml(
+					content.id,
+				)}">編集</button>`
+			: "";
+		const executionButton =
+			content.state === "ok"
+				? `<button class="btn btn-sm btn-outline-secondary js-execution-content" type="button" data-content-id="${utils.escapeHtml(
+						content.id,
+					)}">実行</button>`
+				: "";
+		return `
+			<div class="card shadow-sm">
+				<div class="card-body">
+					<div class="d-flex gap-3 align-items-start">
+						${thumbLink}
+						<div class="flex-grow-1">
+							<div class="fw-semibold">${titleLink}</div>
+							<div class="text-secondary small">作成日: ${contentCreatedAt}</div>
+							${description}
+							<div class="mt-1">${stateLabelHtml}</div>
+						</div>
+						${editButton}
+						${executionButton}
+					</div>
+				</div>
+			</div>
+		`;
 	}
 }

@@ -41,6 +41,10 @@ interface GetParams {
 	id: string;
 }
 
+interface FindContentParams {
+	query: string;
+}
+
 interface UpdateParams {
 	authorization: string;
 	id: string;
@@ -108,6 +112,16 @@ export class ContentsController extends BaseController {
 			),
 		]);
 
+		this.registerRoute(router, "GET", "/", this.findContent, [
+			fw.params.InstantValidator(
+				[validators.query("query").optional().isString()],
+				(context) =>
+					({
+						query: context.req.query.query ?? "",
+					}) as FindContentParams,
+			),
+		]);
+
 		this.registerRoute(router, "GET", "/:id", this.getContent, [new fw.params.StringIdValidator()]);
 
 		this.registerRoute(router, "POST", "/upload-url", this.createUploadUrl, [
@@ -162,6 +176,11 @@ export class ContentsController extends BaseController {
 		return {
 			content: await resolvers.contents.resolve(this.app.firestore, p.id),
 		};
+	}
+
+	async findContent(context: Context) {
+		const p = context.params as FindContentParams;
+		return resolvers.contents.findContents(this.app.firestore, p.query);
 	}
 
 	async put(context: Context) {

@@ -181,3 +181,10 @@ body {
 		max-width: 300px;
 	}
 }
+
+#search-form {
+	display: flex;
+	justify-content: center;
+	gap: 10px;
+	margin-bottom: 16px;
+}

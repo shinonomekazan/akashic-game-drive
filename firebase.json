@@ -68,6 +68,10 @@
 				"destination": "/index.html"
 			},
 			{
+				"source": "/search",
+				"destination": "/index.html"
+			},
+			{
 				"source": "/manage/users/*",
 				"destination": "/manage/users/index.html"
 			},

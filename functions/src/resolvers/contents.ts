@@ -16,7 +16,7 @@ export async function listContents(firestore: Firestore, id: string) {
 	};
 }
 
-export async function searchContents(firestore: Firestore, queryKeywords: string) {
+export async function findContents(firestore: Firestore, queryKeywords: string) {
 	const collection = firestore.collection("contents");
 	const snapshot = await collection.where("state", "==", "ok").get();
 	const candidates = snapshot.docs.map((doc) => {

@@ -18,7 +18,7 @@ import {
 	createContentUploadUrl,
 	getContentById,
 	listMyContents,
-	searchContents,
+	findContents,
 	updateContent,
 } from "./api/contents";
 import { createFeedback, createUser, getUserById, listUserContents } from "./api/users";
@@ -1202,7 +1202,7 @@ export class App {
 		}
 		this.state = { ...this.state, searchLoading: true };
 		try {
-			const response = await searchContents(this.apiClient, query);
+			const response = await findContents(this.apiClient, query);
 			const contents = response.data.contents ?? [];
 			utils.sortContentsByCreatedAt(contents);
 			this.state = {

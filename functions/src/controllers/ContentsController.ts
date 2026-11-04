@@ -41,7 +41,7 @@ interface GetParams {
 	id: string;
 }
 
-interface SearchContentParams {
+interface FindContentParams {
 	query: string;
 }
 
@@ -112,13 +112,13 @@ export class ContentsController extends BaseController {
 			),
 		]);
 
-		this.registerRoute(router, "GET", "/searchContent", this.searchContent, [
+		this.registerRoute(router, "GET", "/", this.findContent, [
 			fw.params.InstantValidator(
 				[validators.query("query").optional().isString()],
 				(context) =>
 					({
 						query: context.req.query.query ?? "",
-					}) as SearchContentParams,
+					}) as FindContentParams,
 			),
 		]);
 
@@ -178,9 +178,9 @@ export class ContentsController extends BaseController {
 		};
 	}
 
-	async searchContent(context: Context) {
-		const p = context.params as SearchContentParams;
-		return resolvers.contents.searchContents(this.app.firestore, p.query);
+	async findContent(context: Context) {
+		const p = context.params as FindContentParams;
+		return resolvers.contents.findContents(this.app.firestore, p.query);
 	}
 
 	async put(context: Context) {

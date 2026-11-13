@@ -63,10 +63,10 @@ export class App {
 			userPageContents: [],
 			userPageContentsLoaded: false,
 			userPageContentsLoading: false,
-			contentViewId: null,
-			contentView: null,
-			contentViewLoaded: false,
-			contentViewLoading: false,
+			currentContentId: null,
+			currentContent: null,
+			currentContentLoaded: false,
+			currentContentLoading: false,
 			contentViewOwnerId: null,
 			contentViewOwner: null,
 			contentViewOwnerLoaded: false,
@@ -109,10 +109,10 @@ export class App {
 				userPageContents: [],
 				userPageContentsLoaded: false,
 				userPageContentsLoading: false,
-				contentViewId: null,
-				contentView: null,
-				contentViewLoaded: false,
-				contentViewLoading: false,
+				currentContentId: null,
+				currentContent: null,
+				currentContentLoaded: false,
+				currentContentLoading: false,
 				contentViewOwnerId: null,
 				contentViewOwner: null,
 				contentViewOwnerLoaded: false,
@@ -242,17 +242,17 @@ export class App {
 				break;
 			case "not-found":
 			default:
-				this.redirectFromRoot();
+				this.redirectFromNotFound();
 				break;
 		}
 	}
 
-	redirectFromRoot() {
+	redirectFromNotFound() {
 		if (this.state.user) {
 			utils.navigateTo("/my");
 			return;
 		}
-		utils.navigateTo("/login");
+		utils.navigateTo("/");
 	}
 
 	async renderTop() {
@@ -871,34 +871,34 @@ export class App {
 			return;
 		}
 
-		if (this.state.contentViewId !== contentId) {
+		if (this.state.currentContentId !== contentId) {
 			this.state = {
 				...this.state,
-				contentViewId: contentId,
-				contentView: null,
-				contentViewLoaded: false,
-				contentViewLoading: false,
+				currentContentId: contentId,
+				currentContent: null,
+				currentContentLoaded: false,
+				currentContentLoading: false,
 			};
 		}
 
-		if (this.state.contentViewLoading) {
+		if (this.state.currentContentLoading) {
 			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
 			return;
 		}
 
-		if (!this.state.contentViewLoaded) {
+		if (!this.state.currentContentLoaded) {
 			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
 			await this.loadContentView(contentId);
 			await this.render();
 			return;
 		}
 
-		if (!this.state.contentView) {
+		if (!this.state.currentContent) {
 			this.setContent('<div class="text-center text-secondary">コンテンツが見つかりません。</div>');
 			return;
 		}
 
-		const content = this.state.contentView;
+		const content = this.state.currentContent;
 		const ownerId = content.ownerId;
 		if (this.state.contentViewOwnerId !== ownerId) {
 			this.state = {
@@ -930,34 +930,34 @@ export class App {
 			return;
 		}
 
-		if (this.state.contentViewId !== contentId) {
+		if (this.state.currentContentId !== contentId) {
 			this.state = {
 				...this.state,
-				contentViewId: contentId,
-				contentView: null,
-				contentViewLoaded: false,
-				contentViewLoading: false,
+				currentContentId: contentId,
+				currentContent: null,
+				currentContentLoaded: false,
+				currentContentLoading: false,
 			};
 		}
 
-		if (this.state.contentViewLoading) {
+		if (this.state.currentContentLoading) {
 			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
 			return;
 		}
 
-		if (!this.state.contentViewLoaded) {
+		if (!this.state.currentContentLoaded) {
 			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
 			await this.loadContentView(contentId);
 			await this.render();
 			return;
 		}
 
-		if (!this.state.contentView) {
+		if (!this.state.currentContent) {
 			this.setContent('<div class="text-center text-secondary">コンテンツが見つかりません。</div>');
 			return;
 		}
 
-		const content = this.state.contentView;
+		const content = this.state.currentContent;
 		if (!content || content.state !== "ok" || content.contentJsonPath == null) {
 			this.setContent('<div class="text-center text-secondary">コンテンツが実行できません。</div>');
 			return;
@@ -1284,7 +1284,7 @@ export class App {
 	}
 
 	async loadContentView(contentId: string) {
-		if (this.state.contentViewLoading) {
+		if (this.state.currentContentLoading) {
 			return;
 		}
 		const cachedContent =
@@ -1293,26 +1293,26 @@ export class App {
 		if (cachedContent) {
 			this.state = {
 				...this.state,
-				contentView: cachedContent,
-				contentViewLoaded: true,
-				contentViewLoading: false,
+				currentContent: cachedContent,
+				currentContentLoaded: true,
+				currentContentLoading: false,
 			};
 			return;
 		}
-		this.state = { ...this.state, contentViewLoading: true };
+		this.state = { ...this.state, currentContentLoading: true };
 		try {
 			const response = await getContentById(this.apiClient, contentId);
 			this.state = {
 				...this.state,
-				contentView: response.data.content ?? null,
-				contentViewLoaded: true,
-				contentViewLoading: false,
+				currentContent: response.data.content ?? null,
+				currentContentLoaded: true,
+				currentContentLoading: false,
 			};
 		} catch (err) {
 			this.state = {
 				...this.state,
-				contentViewLoaded: true,
-				contentViewLoading: false,
+				currentContentLoaded: true,
+				currentContentLoading: false,
 			};
 			this.showToast((err as Error).message || "コンテンツの取得に失敗しました", "error");
 		}

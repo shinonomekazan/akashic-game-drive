@@ -71,10 +71,10 @@ export interface AppState {
 	userPageContents: ContentRecord[];
 	userPageContentsLoaded: boolean;
 	userPageContentsLoading: boolean;
-	contentViewId: string | null;
-	contentView: ContentRecord | null;
-	contentViewLoaded: boolean;
-	contentViewLoading: boolean;
+	currentContentId: string | null;
+	currentContent: ContentRecord | null;
+	currentContentLoaded: boolean;
+	currentContentLoading: boolean;
 	contentViewOwnerId: string | null;
 	contentViewOwner: UserProfile | null;
 	contentViewOwnerLoaded: boolean;

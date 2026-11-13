@@ -46,6 +46,9 @@ export class App {
 			route: utils.parseRoute(),
 			user: null,
 			loading: true,
+			topPageContents: [],
+			topPageContentsLoaded: false,
+			topPageContentsLoading: false,
 			profile: null,
 			profileLoaded: false,
 			profileLoading: false,
@@ -133,10 +136,12 @@ export class App {
 
 		window.addEventListener("popstate", async () => {
 			const nextRoute = utils.parseRoute();
+			const shouldRefreshTop = nextRoute.name === "top" && this.state.route.name !== "top";
 			const shouldRefreshMy = nextRoute.name === "my" && this.state.route.name !== "my";
 			this.state = {
 				...this.state,
 				route: nextRoute,
+				topPageContentsLoaded: this.state.topPageContentsLoaded && !shouldRefreshTop,
 				refreshMyFeedbacks: shouldRefreshMy,
 			};
 			await this.render();
@@ -199,6 +204,9 @@ export class App {
 		}
 
 		switch (this.state.route.name) {
+			case "top":
+				await this.renderTop();
+				break;
 			case "login":
 				this.renderLogin();
 				break;
@@ -232,7 +240,7 @@ export class App {
 			case "search":
 				await this.renderSearchPage();
 				break;
-			case "top":
+			case "not-found":
 			default:
 				this.redirectFromRoot();
 				break;
@@ -245,6 +253,22 @@ export class App {
 			return;
 		}
 		utils.navigateTo("/login");
+	}
+
+	async renderTop() {
+		if (this.state.topPageContentsLoading) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			return;
+		}
+
+		if (!this.state.topPageContentsLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadTopPageContents();
+			await this.render();
+			return;
+		}
+
+		this.renderTopPageContents(this.state.topPageContents);
 	}
 
 	async renderMy() {
@@ -724,29 +748,6 @@ export class App {
 	}
 
 	async renderSearchPage() {
-		const signedIn = this.state.user !== null;
-		if (!signedIn) {
-			utils.navigateTo("/login");
-			return;
-		}
-
-		if (this.state.profileLoading) {
-			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
-			return;
-		}
-
-		if (!this.state.profileLoaded) {
-			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
-			await this.loadUserProfile();
-			await this.render();
-			return;
-		}
-
-		if (this.state.needsProfile) {
-			this.renderProfileSetup();
-			return;
-		}
-
 		const urlParams = new URLSearchParams(window.location.search);
 		const query = urlParams.get("query") ?? "";
 
@@ -922,52 +923,88 @@ export class App {
 	}
 
 	async renderContentPlay() {
-		const signedIn = this.state.user !== null;
-		if (!signedIn) {
-			utils.navigateTo("/login");
-			return;
-		}
-
-		if (this.state.profileLoading) {
-			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
-			return;
-		}
-
-		if (!this.state.profileLoaded) {
-			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
-			await this.loadUserProfile();
-			await this.render();
-			return;
-		}
-
-		if (this.state.needsProfile) {
-			this.renderProfileSetup();
-			return;
-		}
-
-		if (this.state.contentsLoading) {
-			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
-			return;
-		}
-
-		if (!this.state.contentsLoaded) {
-			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
-			await this.loadMyContents();
-			await this.render();
-			return;
-		}
-
 		const route = this.state.route;
 		const contentId = route.name === "content-play" ? route.contentId : "";
-		const content = this.state.contents.find((item) => item.id === contentId);
+		if (!contentId) {
+			utils.navigateTo("/");
+			return;
+		}
+
+		if (this.state.contentViewId !== contentId) {
+			this.state = {
+				...this.state,
+				contentViewId: contentId,
+				contentView: null,
+				contentViewLoaded: false,
+				contentViewLoading: false,
+			};
+		}
+
+		if (this.state.contentViewLoading) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			return;
+		}
+
+		if (!this.state.contentViewLoaded) {
+			this.setContent('<div class="text-center text-secondary">読み込み中...</div>');
+			await this.loadContentView(contentId);
+			await this.render();
+			return;
+		}
+
+		if (!this.state.contentView) {
+			this.setContent('<div class="text-center text-secondary">コンテンツが見つかりません。</div>');
+			return;
+		}
+
+		const content = this.state.contentView;
 		if (!content || content.state !== "ok" || content.contentJsonPath == null) {
-			this.showToast("コンテンツが見つかりません", "error");
-			utils.navigateTo("/my");
+			this.setContent('<div class="text-center text-secondary">コンテンツが実行できません。</div>');
 			return;
 		}
 
 		this.setContent(`<div id="contentContainer" class="w-100"></div>`);
 		this.renderGameScreen(content.contentJsonPath);
+	}
+
+	renderTopPageContents(contents: ContentRecord[]) {
+		const headerButtonHtml = this.state.user
+			? `<a id="my-page-link" class="btn btn-outline-primary" href="/my">マイページ</a>`
+			: `<a class="btn btn-outline-primary" href="${this.buildLoginHref()}">ログイン</a>`;
+
+		const resultHtml =
+			contents.length === 0
+				? '<div class="agd-empty">該当するコンテンツはありません。</div>'
+				: `
+			<div class="d-grid gap-3">
+				${contents
+					.map((content) => {
+						return this.buildContentCardHtml(content, false, false);
+					})
+					.join("")}
+			</div>
+		`;
+
+		this.setContent(`
+			<div class="agd-my-header">
+				<div>
+					<div class="agd-user-name">Akashic Game Drive</div>
+				</div>
+				<div class="agd-actions">
+					${headerButtonHtml}
+				</div>
+			</div>
+			${this.buildSearchFormHtml()}
+			<div class="card shadow-sm">
+				<div class="card-body">
+					<div class="d-flex align-items-center justify-content-between mb-3">
+						<h2 class="h6 mb-0">新着</h2>
+					</div>
+					${resultHtml}
+				</div>
+			</div>
+		`);
+		this.bindMyActions();
 	}
 
 	async loadUserProfile() {
@@ -1204,7 +1241,6 @@ export class App {
 		try {
 			const response = await findContents(this.apiClient, query);
 			const contents = response.data.contents ?? [];
-			utils.sortContentsByCreatedAt(contents);
 			this.state = {
 				...this.state,
 				searchQuery: query,
@@ -1217,6 +1253,31 @@ export class App {
 				searchQuery: query,
 				searchResults: [],
 				searchLoading: false,
+			};
+			this.showToast((err as Error).message || "コンテンツの取得に失敗しました", "error");
+		}
+	}
+
+	async loadTopPageContents() {
+		if (this.state.topPageContentsLoading) {
+			return;
+		}
+		this.state = { ...this.state, topPageContentsLoading: true };
+		try {
+			const response = await findContents(this.apiClient, "", 10);
+			const contents = response.data.contents ?? [];
+			this.state = {
+				...this.state,
+				topPageContents: contents,
+				topPageContentsLoaded: true,
+				topPageContentsLoading: false,
+			};
+		} catch (err) {
+			this.state = {
+				...this.state,
+				topPageContents: [],
+				topPageContentsLoaded: true,
+				topPageContentsLoading: false,
 			};
 			this.showToast((err as Error).message || "コンテンツの取得に失敗しました", "error");
 		}
@@ -1718,9 +1779,7 @@ export class App {
 		`
 			: "";
 		const showFeedbackLoginPrompt = options.showFeedbackLoginPrompt ?? false;
-		const loginHref = `/login?next=${encodeURIComponent(window.location.pathname || "/")}${
-			utils.isDebugMode() ? "&debug=true" : ""
-		}`;
+		const loginHref = this.buildLoginHref();
 		const feedbackLoginPromptHtml = showFeedbackLoginPrompt
 			? `
 			<div class="card shadow-sm mt-4">
@@ -1916,9 +1975,7 @@ export class App {
 		const showCreate = options.showCreate ?? true;
 		const showFeedbackForm = options.showFeedbackForm ?? false;
 		const showFeedbackLoginPrompt = options.showFeedbackLoginPrompt ?? false;
-		const loginHref = `/login?next=${encodeURIComponent(window.location.pathname || "/")}${
-			utils.isDebugMode() ? "&debug=true" : ""
-		}`;
+		const loginHref = this.buildLoginHref();
 		const showLogout = showActions && this.state.user !== null;
 		const showEditProfile = showActions && allowEdit;
 		const showFeedback = showActions && allowEdit;
@@ -2129,7 +2186,7 @@ export class App {
 					<div class="d-grid gap-3">
 						${contents
 							.map((content) => {
-								return this.buildContentCardHtml(content, allowEdit);
+								return this.buildContentCardHtml(content, true, allowEdit);
 							})
 							.join("")}
 					</div>
@@ -2227,17 +2284,14 @@ export class App {
 			<div class="d-grid gap-3">
 				${contents
 					.map((content) => {
-						return this.buildContentCardHtml(content, false);
+						return this.buildContentCardHtml(content, false, false);
 					})
 					.join("")}
 			</div>
 		`;
 
 		this.setContent(`
-			<form id="search-form">
-				<input type="search" name="query" value="${utils.escapeHtml(query)}" id="search-input" class="w-75 form-control" style="max-width: 600px;" >
-				<button type="submit" class="btn btn-primary">検索</button>
-			</form>
+			${this.buildSearchFormHtml(query)}
 			<div class="card shadow-sm">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between mb-3">
@@ -2290,7 +2344,7 @@ export class App {
 		if (logoutBtn) {
 			logoutBtn.addEventListener("click", async () => {
 				await signOutCurrentUser(this.firebase);
-				utils.navigateTo("/login");
+				utils.navigateTo("/");
 			});
 		}
 
@@ -2502,7 +2556,7 @@ export class App {
 			const logoutBtn = utils.qsStrict<HTMLButtonElement>("#logout");
 			logoutBtn.addEventListener("click", async () => {
 				await signOutCurrentUser(this.firebase);
-				utils.navigateTo("/login");
+				utils.navigateTo("/");
 			});
 		}
 	}
@@ -2520,12 +2574,12 @@ export class App {
 		}, 3200);
 	}
 
-	buildContentCardHtml(content: ContentRecord, allowEdit: boolean): string {
+	buildContentCardHtml(content: ContentRecord, showState: boolean, allowEdit: boolean): string {
 		const title = utils.escapeHtml(content.title);
 		const description = content.description
 			? `<div class="text-secondary small mt-1">${utils.escapeHtml(content.description)}</div>`
 			: "";
-		const stateLabel = utils.getStateListContentLabel(content.state);
+		const stateLabel = showState ? utils.getStateListContentLabel(content.state) : "";
 		const stateLabelHtml = stateLabel;
 		const contentLink = `/contents/${encodeURIComponent(content.id)}`;
 		const titleLink = `<a class="text-decoration-none text-reset js-content-link" href="${utils.escapeHtml(
@@ -2566,5 +2620,20 @@ export class App {
 				</div>
 			</div>
 		`;
+	}
+
+	buildSearchFormHtml(query?: string) {
+		return `
+			<form id="search-form">
+				<input type="search" name="query" value="${query ? utils.escapeHtml(query) : ""}" id="search-input" class="w-75 form-control" style="max-width: 600px;" >
+				<button type="submit" class="btn btn-primary">検索</button>
+			</form>
+		`;
+	}
+
+	buildLoginHref(): string {
+		return `/login?next=${encodeURIComponent(window.location.pathname || "/")}${
+			utils.isDebugMode() ? "&debug=true" : ""
+		}`;
 	}
 }

@@ -55,9 +55,9 @@ export async function createContentUploadUrl(client: Client, input: CreateConten
 	);
 }
 
-export async function findContents(client: Client, query: string) {
+export async function findContents(client: Client, query: string, limit?: number) {
 	return client.call<{ contents: ContentRecord[] }>(
 		"GET",
-		`/contents?query=${encodeURIComponent(query)}`,
+		`/contents?query=${encodeURIComponent(query)}${limit !== undefined ? `&limit=${limit}` : ""}`,
 	);
 }

@@ -43,6 +43,7 @@ interface GetParams {
 
 interface FindContentParams {
 	query: string;
+	limit?: number;
 }
 
 interface UpdateParams {
@@ -114,10 +115,14 @@ export class ContentsController extends BaseController {
 
 		this.registerRoute(router, "GET", "/", this.findContent, [
 			fw.params.InstantValidator(
-				[validators.query("query").optional().isString()],
+				[
+					validators.query("query").optional().isString(),
+					validators.query("limit").optional().isInt({ min: 1 }).toInt(),
+				],
 				(context) =>
 					({
 						query: context.req.query.query ?? "",
+						limit: context.req.query.limit,
 					}) as FindContentParams,
 			),
 		]);
@@ -180,7 +185,7 @@ export class ContentsController extends BaseController {
 
 	async findContent(context: Context) {
 		const p = context.params as FindContentParams;
-		return resolvers.contents.findContents(this.app.firestore, p.query);
+		return resolvers.contents.findContents(this.app.firestore, p.query, p.limit);
 	}
 
 	async put(context: Context) {

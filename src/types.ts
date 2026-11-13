@@ -47,12 +47,16 @@ export type Route =
 	| { name: "content-edit"; contentId: string }
 	| { name: "content-play"; contentId: string }
 	| { name: "user"; userId: string }
-	| { name: "search" };
+	| { name: "search" }
+	| { name: "not-found" };
 
 export interface AppState {
 	route: Route;
 	user: User | null;
 	loading: boolean;
+	topPageContents: ContentRecord[];
+	topPageContentsLoaded: boolean;
+	topPageContentsLoading: boolean;
 	profile: UserProfile | null;
 	profileLoaded: boolean;
 	profileLoading: boolean;

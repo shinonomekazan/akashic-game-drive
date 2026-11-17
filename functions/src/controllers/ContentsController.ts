@@ -43,7 +43,7 @@ interface GetParams {
 
 interface FindContentParams {
 	query: string;
-	limit?: number;
+	limit: number;
 }
 
 interface UpdateParams {
@@ -117,12 +117,12 @@ export class ContentsController extends BaseController {
 			fw.params.InstantValidator(
 				[
 					validators.query("query").optional().isString(),
-					validators.query("limit").optional().isInt({ min: 1 }).toInt(),
+					validators.query("limit").optional().isInt({ min: 1, max: 50 }).toInt(),
 				],
 				(context) =>
 					({
 						query: context.req.query.query ?? "",
-						limit: context.req.query.limit,
+						limit: context.req.query.limit ?? 50,
 					}) as FindContentParams,
 			),
 		]);
@@ -185,7 +185,12 @@ export class ContentsController extends BaseController {
 
 	async findContent(context: Context) {
 		const p = context.params as FindContentParams;
-		return resolvers.contents.findContents(this.app.firestore, p.query, p.limit);
+		if (p.query.trim() === "") {
+			//検索欄が空の場合、またはトップ
+			return resolvers.contents.listLatestContents(this.app.firestore, p.limit);
+		} else {
+			return resolvers.contents.findContents(this.app.firestore, p.query, p.limit);
+		}
 	}
 
 	async put(context: Context) {

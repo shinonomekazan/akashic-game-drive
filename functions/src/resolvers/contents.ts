@@ -1,7 +1,6 @@
 import { Firestore } from "@google-cloud/firestore";
 import { ContentRecord } from "../types";
 import * as fw from "../fw";
-import { sortContentsByCreatedAt } from "../utils";
 
 export async function listContents(firestore: Firestore, id: string) {
 	const snapshot = await firestore.collection("contents").where("ownerId", "==", id).get();
@@ -17,9 +16,25 @@ export async function listContents(firestore: Firestore, id: string) {
 	};
 }
 
-export async function findContents(firestore: Firestore, queryKeywords: string, limit?: number) {
+export async function listLatestContents(firestore: Firestore, limit: number) {
 	const collection = firestore.collection("contents");
-	const snapshot = await collection.where("state", "==", "ok").get();
+	const snapshot = await collection.where("state", "==", "ok").orderBy("createdAt", "desc").limit(limit).get();
+	const contents = snapshot.docs.map((doc) => {
+		const data = doc.data() as Omit<ContentRecord, "id">;
+		return {
+			id: doc.id,
+			...data,
+		} as ContentRecord;
+	});
+
+	return {
+		contents: contents,
+	};
+}
+
+export async function findContents(firestore: Firestore, queryKeywords: string, limit: number) {
+	const collection = firestore.collection("contents");
+	const snapshot = await collection.where("state", "==", "ok").orderBy("createdAt", "desc").get();
 	const candidates = snapshot.docs.map((doc) => {
 		const data = doc.data() as Omit<ContentRecord, "id">;
 		return {
@@ -33,10 +48,9 @@ export async function findContents(firestore: Firestore, queryKeywords: string, 
 		const title = content.title.toLowerCase();
 		return keywords.every((keyword) => title.includes(keyword));
 	});
-	sortContentsByCreatedAt(contents);
 
 	return {
-		contents: limit ? contents.slice(0, limit) : contents,
+		contents: contents.slice(0, limit),
 	};
 }
 

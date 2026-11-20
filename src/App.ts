@@ -1287,18 +1287,6 @@ export class App {
 		if (this.state.currentContentLoading) {
 			return;
 		}
-		const cachedContent =
-			this.state.contents.find((item) => item.id === contentId) ??
-			this.state.userPageContents.find((item) => item.id === contentId);
-		if (cachedContent) {
-			this.state = {
-				...this.state,
-				currentContent: cachedContent,
-				currentContentLoaded: true,
-				currentContentLoading: false,
-			};
-			return;
-		}
 		this.state = { ...this.state, currentContentLoading: true };
 		try {
 			const response = await getContentById(this.apiClient, contentId);
@@ -1702,6 +1690,13 @@ export class App {
 					contents: [],
 					contentsLoaded: false,
 					contentsLoading: false,
+					userPageContents: [],
+					userPageContentsLoaded: false,
+					userPageContentsLoading: false,
+					currentContentId: null,
+					currentContent: null,
+					currentContentLoaded: false,
+					currentContentLoading: false,
 				};
 				utils.navigateTo("/my");
 			} catch (err) {

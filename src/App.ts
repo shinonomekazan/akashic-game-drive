@@ -1290,6 +1290,7 @@ export class App {
 		this.state = { ...this.state, currentContentLoading: true };
 		try {
 			const response = await getContentById(this.apiClient, contentId);
+			if (this.state.currentContentId !== contentId) return;
 			this.state = {
 				...this.state,
 				currentContent: response.data.content ?? null,
@@ -1297,6 +1298,7 @@ export class App {
 				currentContentLoading: false,
 			};
 		} catch (err) {
+			if (this.state.currentContentId !== contentId) return;
 			this.state = {
 				...this.state,
 				currentContentLoaded: true,

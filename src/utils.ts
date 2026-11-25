@@ -108,7 +108,7 @@ export function parseRoute(): Route {
 	if (path.startsWith("/search")) {
 		return { name: "search" };
 	}
-	return { name: "top" };
+	return { name: "not-found" };
 }
 
 export function resolveTimestampDate(value: unknown) {

@@ -16,9 +16,25 @@ export async function listContents(firestore: Firestore, id: string) {
 	};
 }
 
-export async function findContents(firestore: Firestore, queryKeywords: string) {
+export async function listLatestContents(firestore: Firestore, limit: number) {
 	const collection = firestore.collection("contents");
-	const snapshot = await collection.where("state", "==", "ok").get();
+	const snapshot = await collection.where("state", "==", "ok").orderBy("createdAt", "desc").limit(limit).get();
+	const contents = snapshot.docs.map((doc) => {
+		const data = doc.data() as Omit<ContentRecord, "id">;
+		return {
+			id: doc.id,
+			...data,
+		} as ContentRecord;
+	});
+
+	return {
+		contents: contents,
+	};
+}
+
+export async function findContents(firestore: Firestore, queryKeywords: string, limit: number) {
+	const collection = firestore.collection("contents");
+	const snapshot = await collection.where("state", "==", "ok").orderBy("createdAt", "desc").get();
 	const candidates = snapshot.docs.map((doc) => {
 		const data = doc.data() as Omit<ContentRecord, "id">;
 		return {
@@ -34,7 +50,7 @@ export async function findContents(firestore: Firestore, queryKeywords: string) 
 	});
 
 	return {
-		contents,
+		contents: contents.slice(0, limit),
 	};
 }
 
